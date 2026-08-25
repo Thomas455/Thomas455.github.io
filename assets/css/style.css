@@ -129,6 +129,24 @@ a:hover {
   text-decoration: none;
 }
 
+.btn-group {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.btn-outline:hover {
+  background: var(--accent-weak);
+  color: var(--accent);
+}
+
 /* ============ 分区 ============ */
 .section {
   padding: 64px 0;

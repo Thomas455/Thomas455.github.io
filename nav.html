@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>快捷导航 · Thomas455</title>
+  <meta name="description" content="常用网站快捷导航，支持快速搜索。">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    /* ===== 导航页 ===== */
+    .nav-hero {
+      min-height: calc(100vh - 56px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      text-align: center;
+      padding: 32px 0;
+    }
+
+    .nav-hero h1 {
+      font-size: 1.6rem;
+      margin: 0;
+    }
+
+    /* 吸顶后压缩首屏区，内容立即跟上 */
+    body.search-pinned .nav-hero {
+      min-height: 160px;
+      justify-content: flex-start;
+      padding-top: 16px;
+    }
+
+    /* 下滑提示 */
+    .scroll-hint {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 16px;
+    }
+
+    .scroll-hint .arrow {
+      width: 16px;
+      height: 16px;
+      border-right: 2px solid var(--muted);
+      border-bottom: 2px solid var(--muted);
+      transform: rotate(45deg);
+      animation: hint-bounce 1.6s infinite;
+    }
+
+    @keyframes hint-bounce {
+      0%, 100% { transform: rotate(45deg) translate(0, 0); }
+      50% { transform: rotate(45deg) translate(4px, 4px); }
+    }
+
+    body.search-pinned .scroll-hint {
+      display: none;
+    }
+
+    #search-wrap {
+      width: 100%;
+    }
+
+    #search-wrap.fixed {
+      position: fixed;
+      top: 56px;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      padding: 12px 0 16px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    #search {
+      display: block;
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    #search:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .nav-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      padding: 24px 0 64px;
+    }
+
+    .ncard {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 18px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      text-align: center;
+      color: var(--text);
+      transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+    }
+
+    .ncard:hover {
+      border-color: var(--accent);
+      box-shadow: 0 4px 16px rgba(31, 35, 40, 0.08);
+      transform: translateY(-2px);
+      text-decoration: none;
+    }
+
+    .nicon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .nicon img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .nicon.has-img img {
+      opacity: 1;
+    }
+
+    .nicon.no-img img {
+      display: none;
+    }
+
+    .nletter {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .nicon.has-img .nletter {
+      display: none;
+    }
+
+    .nname {
+      font-size: 0.88rem;
+      font-weight: 600;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .ndomain {
+      font-size: 0.72rem;
+      color: var(--muted);
+      word-break: break-all;
+      max-width: 100%;
+    }
+
+    .empty-tip {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: var(--muted);
+      padding: 48px 0;
+    }
+
+    @media (max-width: 640px) {
+      .nav-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div class="nav-hero">
+      <h1>快捷导航</h1>
+      <div id="search-wrap">
+        <input id="search" type="text" placeholder="搜索网站名称或域名…（回车打开第一个结果，Esc 清空）" autocomplete="off">
+      </div>
+      <div class="scroll-hint">
+        <span>下滑浏览全部网站</span>
+        <span class="arrow"></span>
+      </div>
+    </div>
+    <div id="grid" class="nav-grid"></div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p><a href="index.html">返回主页</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // ===== 站点数据：n=名称, u=URL, c=分类 =====
+    const SITES = [
+      // AI / 大模型
+      { n: 'DeepSeek 对话', u: 'https://chat.deepseek.com/', c: 'AI' },
+      { n: 'DeepSeek 开放平台', u: 'https://platform.deepseek.com/', c: 'AI' },
+      { n: '豆包', u: 'https://www.doubao.com/', c: 'AI' },
+      { n: '智谱清言', u: 'https://chatglm.cn/', c: 'AI' },
+      { n: '智谱 AI 开放平台', u: 'https://bigmodel.cn/', c: 'AI' },
+      { n: 'ChatGPT', u: 'https://chatgpt.com/', c: 'AI' },
+      { n: '通义千问', u: 'https://www.qianwen.com/', c: 'AI' },
+      { n: '魔搭社区', u: 'https://modelscope.cn/', c: 'AI' },
+      { n: 'OpenCode', u: 'https://opencode.ai/', c: 'AI' },
+
+      // 开发 / 编程
+      { n: 'GitHub', u: 'https://github.com/', c: '开发' },
+      { n: 'GitLab', u: 'https://about.gitlab.com/', c: '开发' },
+      { n: 'Gitee', u: 'https://gitee.com/', c: '开发' },
+      { n: 'Git', u: 'https://git-scm.com/', c: '开发' },
+      { n: 'Node.js', u: 'https://nodejs.org/zh-cn', c: '开发' },
+      { n: 'Python', u: 'https://www.python.org/', c: '开发' },
+      { n: 'NuGet', u: 'https://www.nuget.org/', c: '开发' },
+      { n: 'Docker', u: 'https://www.docker.com/', c: '开发' },
+      { n: 'VMware', u: 'https://www.vmware.com/', c: '开发' },
+      { n: 'JetBrains', u: 'https://www.jetbrains.com.cn/', c: '开发' },
+      { n: 'Visual Studio 下载', u: 'https://visualstudio.microsoft.com/zh-hans/downloads/', c: '开发' },
+      { n: '.NET 下载', u: 'https://dotnet.microsoft.com/zh-cn/download', c: '开发' },
+      { n: 'Notepad++', u: 'https://notepad-plus-plus.org/', c: '开发' },
+
+      // 游戏 / 电竞
+      { n: 'Steam', u: 'https://store.steampowered.com/', c: '游戏' },
+      { n: 'SteamDB', u: 'https://steamdb.info/', c: '游戏' },
+      { n: 'Epic Games', u: 'https://www.epicgames.com/', c: '游戏' },
+      { n: 'GOG', u: 'https://www.gog.com/', c: '游戏' },
+      { n: 'Minecraft', u: 'https://www.minecraft.net/', c: '游戏' },
+      { n: 'MineBBS', u: 'https://www.minebbs.com/', c: '游戏' },
+      { n: 'AXLMC', u: 'https://axlmc.org/', c: '游戏' },
+      { n: 'WeGame', u: 'https://www.wegame.com.cn/', c: '游戏' },
+      { n: 'Rockstar Games', u: 'https://www.rockstargames.com/', c: '游戏' },
+      { n: 'EA', u: 'https://www.ea.com', c: '游戏' },
+      { n: 'Ubisoft', u: 'https://www.ubisoft.com', c: '游戏' },
+      { n: '米哈游', u: 'https://www.mihoyo.com/', c: '游戏' },
+      { n: 'TapTap', u: 'https://www.taptap.cn/', c: '游戏' },
+      { n: 'Xbox', u: 'https://www.xbox.com', c: '游戏' },
+      { n: '小黑盒', u: 'https://xiaoheihe.cn/', c: '游戏' },
+      { n: '小黑盒', u: 'https://acc.xiaoheihe.cn/', c: '游戏' },
+      { n: '网易UU加速器', u: 'https://uu.163.com/', c: '游戏' },
+      { n: '网易UU', u: 'https://uuyc.163.com/', c: '游戏' },
+      { n: '雷神加速器', u: 'https://www.leigod.com/', c: '游戏' },
+      { n: '迅游加速器', u: 'https://www.xunyou.com/', c: '游戏' },
+
+      // 硬件 / 厂商
+      { n: 'NVIDIA', u: 'https://www.nvidia.cn/', c: '硬件' },
+      { n: 'AMD', u: 'https://www.amd.com/', c: '硬件' },
+      { n: 'Intel', u: 'https://www.intel.cn/', c: '硬件' },
+      { n: '华硕', u: 'https://www.asus.com.cn/', c: '硬件' },
+      { n: '微星', u: 'https://www.msi.cn/', c: '硬件' },
+      { n: '技嘉', u: 'https://www.gigabyte.cn/', c: '硬件' },
+      { n: '七彩虹', u: 'https://www.colorful.cn/', c: '硬件' },
+      { n: '华擎', u: 'https://www.asrock.com/', c: '硬件' },
+      { n: '铭瑄', u: 'https://www.maxsun.com.cn/', c: '硬件' },
+      { n: '影驰 GALAX', u: 'https://www.szgalaxy.com/', c: '硬件' },
+      { n: '联想', u: 'https://www.lenovo.com.cn/', c: '硬件' },
+      { n: 'HP', u: 'https://www.hp.com/', c: '硬件' },
+      { n: 'Dell', u: 'https://www.dell.com/', c: '硬件' },
+      { n: 'Acer', u: 'https://www.acer.com.cn/', c: '硬件' },
+      { n: '神舟', u: 'http://www.hasee.com/', c: '硬件' },
+      { n: '机械革命', u: 'https://www.mechrevo.com/', c: '硬件' },
+      { n: '外星人', u: 'https://www.alienware.com.cn/', c: '硬件' },
+      { n: '小米', u: 'https://www.mi.com/', c: '硬件' },
+      { n: '荣耀', u: 'https://www.honor.com/', c: '硬件' },
+      { n: '三星', u: 'https://www.samsung.com/', c: '硬件' },
+      { n: '罗技', u: 'https://www.logitech.com.cn/', c: '硬件' },
+      { n: '雷蛇', u: 'https://cn.razerzone.com/', c: '硬件' },
+      { n: '金士顿', u: 'https://www.kingston.com.cn/', c: '硬件' },
+      { n: '西部数据', u: 'https://www.westerndigital.com/', c: '硬件' },
+      { n: '希捷', u: 'https://www.seagate.com/', c: '硬件' },
+
+      // 云服务 / 服务器
+      { n: 'Cloudflare', u: 'https://cloudflare.com/', c: '云服务' },
+      { n: '腾讯云', u: 'https://cloud.tencent.com/', c: '云服务' },
+      { n: '阿里云', u: 'https://www.aliyun.com/', c: '云服务' },
+      { n: 'Azure 门户', u: 'https://portal.azure.com/', c: '云服务' },
+      { n: '清华 TUNA 镜像', u: 'https://mirrors.tuna.tsinghua.edu.cn/', c: '云服务' },
+
+      // 社交 / 社区
+      { n: '哔哩哔哩', u: 'https://www.bilibili.com/', c: '社交' },
+      { n: '抖音', u: 'https://www.douyin.com/', c: '社交' },
+      { n: '知乎', u: 'https://www.zhihu.com/', c: '社交' },
+      { n: '微博', u: 'https://weibo.com/', c: '社交' },
+      { n: '快手', u: 'https://www.kuaishou.com/', c: '社交' },
+      { n: 'Discord', u: 'https://discord.com/', c: '社交' },
+      { n: 'Facebook', u: 'https://www.facebook.com/', c: '社交' },
+      { n: 'X (Twitter)', u: 'https://x.com/', c: '社交' },
+      { n: '微信', u: 'https://weixin.qq.com/', c: '社交' },
+      { n: 'QQ', u: 'https://im.qq.com/', c: '社交' },
+      { n: '企业微信', u: 'https://work.weixin.qq.com/', c: '社交' },
+
+      // 影音 / 娱乐
+      { n: '网易云音乐', u: 'https://music.163.com/', c: '影音' },
+      { n: 'QQ音乐', u: 'https://y.qq.com/', c: '影音' },
+      { n: 'Apple Music', u: 'https://music.apple.com/', c: '影音' },
+      { n: '爱奇艺', u: 'https://www.iqiyi.com/', c: '影音' },
+      { n: '腾讯视频', u: 'https://v.qq.com/', c: '影音' },
+      { n: '优酷', u: 'https://www.youku.com/', c: '影音' },
+      { n: '芒果TV', u: 'https://www.mgtv.com/', c: '影音' },
+      { n: '斗鱼', u: 'https://www.douyu.com/', c: '影音' },
+      { n: '虎牙', u: 'https://www.huya.com/', c: '影音' },
+      { n: 'OBS Studio', u: 'https://obsproject.com/', c: '影音' },
+
+      // 网盘 / 存储
+      { n: '百度网盘', u: 'https://pan.baidu.com/', c: '网盘' },
+      { n: '阿里云盘', u: 'https://www.alipan.com/', c: '网盘' },
+      { n: '夸克网盘', u: 'https://pan.quark.cn/', c: '网盘' },
+      { n: 'iCloud', u: 'https://www.icloud.com/', c: '网盘' },
+
+      // 办公 / 工具
+      { n: 'WPS', u: 'https://www.wps.cn/', c: '办公工具' },
+      { n: '钉钉', u: 'https://www.dingtalk.com/', c: '办公工具' },
+      { n: '飞书', u: 'https://www.feishu.cn/', c: '办公工具' },
+      { n: '腾讯会议', u: 'https://meeting.tencent.com/', c: '办公工具' },
+      { n: 'Microsoft 账户', u: 'https://account.microsoft.com/', c: '办公工具' },
+      { n: '夸克浏览器', u: 'https://www.quark.cn/', c: '办公工具' },
+      { n: 'Chrome', u: 'https://www.google.cn/chrome/', c: '办公工具' },
+      { n: 'Firefox', u: 'https://www.mozilla.org/zh-CN/firefox/', c: '办公工具' },
+      { n: '迅雷', u: 'https://www.xunlei.com/', c: '办公工具' },
+      { n: 'IDM', u: 'https://www.internetdownloadmanager.com/', c: '办公工具' },
+      { n: 'WinRAR', u: 'https://www.rarlab.com/', c: '办公工具' },
+      { n: '7-Zip', u: 'https://7-zip.org/', c: '办公工具' },
+      { n: '京东', u: 'https://www.jd.com/', c: '办公工具' },
+      { n: '向日葵远程', u: 'https://sunlogin.oray.com/', c: '办公工具' },
+      { n: 'ToDesk', u: 'https://www.todesk.com/', c: '办公工具' },
+      { n: '卡巴斯基', u: 'https://kaspersky.com/', c: '办公工具' },
+      { n: '火绒', u: 'https://www.huorong.cn/', c: '办公工具' },
+      { n: '360', u: 'https://www.360.cn/', c: '办公工具' },
+      { n: 'WorkBuddy', u: 'https://www.workbuddy.cn/', c: '办公工具' },
+
+      // 学校 / 教育
+      { n: '广州大学', u: 'https://www.gzhu.edu.cn/', c: '学校' },
+      { n: 'SCNet', u: 'https://www.scnet.cn/', c: '学校' },
+      { n: '中科大测速', u: 'https://test.ustc.edu.cn/', c: '学校' },
+      { n: '嘉立创', u: 'https://www.jlc.com/', c: '学校' },
+      { n: 'ST 意法半导体', u: 'https://www.st.com.cn/', c: '学校' },
+      { n: 'MATLAB', u: 'https://www.mathworks.com/', c: '学校' },
+      { n: 'SOLIDWORKS', u: 'https://www.solidworks.com/', c: '学校' },
+
+      // 其他
+      { n: 'ATK Hub', u: 'https://hub.atk.pro/', c: '其他' },
+      { n: '软仓', u: 'https://www.ruancang.net/', c: '其他' },
+      { n: '图拉丁CLUB', u: 'https://tualatin.club/', c: '其他' },
+      { n: '图吧工具箱', u: 'https://www.tbtool.cn/', c: '其他' }
+    ];
+
+    const search = document.getElementById('search');
+    const grid = document.getElementById('grid');
+
+    // 名字 -> 稳定颜色（HSL）
+    function hueOf(s) {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+      return h;
+    }
+
+    function cardEl(site) {
+      let host;
+      try { host = new URL(site.u).hostname; } catch (e) { host = site.u; }
+      const a = document.createElement('a');
+      a.className = 'ncard';
+      a.href = site.u;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.innerHTML =
+        '<span class="nicon">' +
+          '<img alt="" src="https://' + host + '/favicon.ico"' +
+            ' referrerpolicy="no-referrer"' +
+            ' onload="this.style.opacity=1;this.parentNode.classList.add(\'has-img\')"' +
+            ' onerror="if(this.src.indexOf(\'cn.bing.com\')===-1){this.src=\'https://cn.bing.com/favicon.ico?host=' + host + '\';}else{this.parentNode.classList.add(\'no-img\');}">' +
+          '<span class="nletter" style="background:hsl(' + hueOf(site.n) + ',65%,50%)">' +
+            site.n.charAt(0) +
+          '</span>' +
+        '</span>' +
+        '<span class="nname">' + site.n + '</span>' +
+        '<span class="ndomain">' + host + '</span>';
+      return a;
+    }
+
+    function render() {
+      const q = search.value.trim().toLowerCase();
+      grid.innerHTML = '';
+      let count = 0;
+      SITES.forEach(s => {
+        if (q && !(s.n.toLowerCase().includes(q) || s.u.toLowerCase().includes(q) || s.c.toLowerCase().includes(q))) return;
+        grid.appendChild(cardEl(s));
+        count++;
+      });
+      if (count === 0) {
+        const tip = document.createElement('div');
+        tip.className = 'empty-tip';
+        tip.textContent = '没有找到匹配的网站';
+        grid.appendChild(tip);
+      }
+    }
+
+    // 回车打开第一个结果
+    search.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const first = grid.querySelector('.ncard');
+        if (first) window.open(first.href, '_blank');
+      } else if (e.key === 'Escape') {
+        search.value = '';
+        render();
+        updateSearchSticky();
+      }
+    });
+
+    // 初始渲染
+    render();
+
+    // 搜索栏吸顶：滚动超过顶栏，或搜索框有输入内容时，固定在顶栏下方并压缩首屏让内容跟上
+    const searchWrap = document.getElementById('search-wrap');
+    function updateSearchSticky() {
+      const pinned = window.scrollY > 56 || search.value.trim() !== '';
+      searchWrap.classList.toggle('fixed', pinned);
+      document.body.classList.toggle('search-pinned', pinned);
+    }
+    window.addEventListener('scroll', updateSearchSticky, { passive: true });
+    window.addEventListener('resize', updateSearchSticky);
+
+    // 输入内容时立即压缩首屏，让搜索结果马上上来
+    search.addEventListener('input', () => {
+      render();
+      updateSearchSticky();
+    });
+    updateSearchSticky();
+  </script>
+</body>
+</html>
