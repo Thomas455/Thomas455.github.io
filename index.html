@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thomas455 · 个人主页</title>
+  <meta name="description" content="Thomas455 的个人主页 —— 一些自己做的小项目。">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="#top">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 首页主区 -->
+    <section id="top" class="hero">
+      <div class="container">
+        <h1>你好，我是 <span class="accent">Thomas455</span></h1>
+        <p class="intro">这里放了一些自己做的小项目，欢迎看看。</p>
+        <a class="btn" href="#projects">浏览项目</a>
+      </div>
+    </section>
+
+    <!-- 项目展示 -->
+    <section id="projects" class="section">
+      <div class="container">
+        <h2>项目</h2>
+        <div class="grid">
+
+          <article class="card">
+            <h3>OllamaGui</h3>
+            <p>Ollama 可视化管理工具，把原本要在终端里敲的命令全部搬到图形界面：模型下载 / 删除 / 停止、流式对话、CPU 内存 GPU 实时监控。</p>
+            <div class="tags">
+              <span class="badge">WPF</span>
+              <span class="badge">.NET</span>
+              <span class="badge">Ollama API</span>
+            </div>
+            <a class="card-link" href="https://github.com/Thomas455/OllamaGui" target="_blank" rel="noopener">查看源码 →</a>
+          </article>
+
+          <article class="card">
+            <h3>班级点名器</h3>
+            <p>一个简单稳定的课堂点名工具：单文件、超低占用、可自定义名单，即开即用。</p>
+            <div class="tags">
+              <span class="badge">WPF</span>
+              <span class="badge">C#</span>
+            </div>
+            <a class="card-link" href="https://github.com/Thomas455/A-simple-class-roll-caller" target="_blank" rel="noopener">查看源码 →</a>
+          </article>
+
+          <article class="card">
+            <h3>Deepseek Desktop App</h3>
+            <p>DeepSeek 桌面应用，通过调用 DeepSeek API 实现对话功能。</p>
+            <div class="tags">
+              <span class="badge">WPF</span>
+              <span class="badge">C#</span>
+              <span class="badge">API</span>
+            </div>
+            <a class="card-link" href="https://github.com/Thomas455/Deepseek-Desktop-App" target="_blank" rel="noopener">查看源码 →</a>
+          </article>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
