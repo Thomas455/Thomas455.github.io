@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>局域网文件传输 · Thomas455</title>
+  <meta name="description" content="局域网内点对点文件传输：会话 ID + 二维码配对，WebRTC 直连，支持大文件。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .tool-card {
+      padding: 20px 24px;
+      margin-bottom: 18px;
+    }
+
+    .tool-card h3 {
+      font-size: 1rem;
+      margin-bottom: 12px;
+    }
+
+    .conn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 720px) {
+      .conn-grid { grid-template-columns: 1fr; }
+    }
+
+    .side h4 {
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      color: var(--muted);
+    }
+
+    .my-id {
+      font-size: 1.5rem;
+      font-weight: 700;
+      font-family: Consolas, monospace;
+      color: var(--accent);
+      margin-bottom: 10px;
+      word-break: break-all;
+    }
+
+    .qr-box {
+      width: 160px;
+      height: 160px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      padding: 8px;
+      margin-bottom: 10px;
+    }
+
+    .qr-box canvas, .qr-box img { width: 100%; height: 100%; display: block; }
+
+    .conn-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .conn-row input {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: Consolas, monospace;
+      outline: none;
+    }
+
+    .status-line {
+      font-size: 0.88rem;
+      color: var(--muted);
+      min-height: 22px;
+      margin-top: 8px;
+    }
+
+    .status-line b { color: var(--accent); }
+
+    .status-line.ok { color: #059669; }
+    .status-line.err { color: #dc2626; }
+
+    .file-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .file-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .file-size { font-size: 0.82rem; color: var(--muted); }
+
+    .progress {
+      height: 8px;
+      background: rgba(37, 99, 235, 0.1);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+
+    .progress .bar {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.15s;
+    }
+
+    .pct {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+      min-height: 18px;
+    }
+
+    .tx-label, .rx-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+
+    .warn {
+      background: rgba(180, 83, 9, 0.08);
+      border: 1px solid rgba(180, 83, 9, 0.2);
+      color: #b45309;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>局域网 <span class="accent">文件传输</span></h1>
+      <p class="muted">两台设备点对点传文件：会话 ID + 二维码配对，WebRTC 直连，文件不经服务器。</p>
+    </section>
+
+    <div class="warn">⚠️ 需要网络能访问 PeerJS 公共信令服务器（0.peerjs.com）。传输建立后文件点对点直传，不经服务器存储。建议 Chrome / Edge 使用。</div>
+
+    <section class="tool-card glass">
+      <h3>连接</h3>
+      <div class="conn-grid">
+        <div class="side">
+          <h4>① 我的会话 ID（给对方连接用）</h4>
+          <div class="my-id" id="myId">正在连接信令服务器…</div>
+          <div class="qr-box" id="qrBox"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <button class="btn btn-outline" id="copyIdBtn">复制 ID</button>
+            <button class="btn btn-outline" id="regenerateBtn">换一个 ID</button>
+          </div>
+          <div class="conn-row">
+            <input type="text" id="customId" placeholder="自定义 ID（2-12 位）" maxlength="12">
+            <button class="btn btn-outline" id="applyIdBtn">使用此 ID</button>
+          </div>
+        </div>
+        <div class="side">
+          <h4>② 连接对方</h4>
+          <div class="conn-row">
+            <input type="text" id="peerIdInput" placeholder="输入对方的会话 ID">
+            <button class="btn" id="connectBtn">连接</button>
+          </div>
+          <button class="btn btn-outline" id="scanBtn">扫码连接</button>
+          <div class="status-line" id="connStatus">未连接</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>文件传输</h3>
+      <div class="file-row">
+        <button class="btn btn-outline" id="pickBtn">选择文件</button>
+        <input type="file" id="fileInput" style="display:none">
+        <span class="file-name" id="fileName">未选择文件</span>
+        <span class="file-size" id="fileSize"></span>
+      </div>
+      <button class="btn" id="sendBtn" disabled>发送给对方</button>
+      <div class="tx-label">发送进度</div>
+      <div class="progress" id="txProgress"><div class="bar" id="txBar"></div></div>
+      <div class="pct" id="txPct"></div>
+      <div class="rx-label">接收进度</div>
+      <div class="progress" id="rxProgress"><div class="bar" id="rxBar"></div></div>
+      <div class="pct" id="rxPct"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/peerjs.min.js"></script>
+  <script src="../assets/js/qrcode.min.js"></script>
+  <script src="../assets/js/jsQR.js"></script>
+
+  <script>
+    const myIdEl = document.getElementById('myId');
+    const qrBox = document.getElementById('qrBox');
+    const copyIdBtn = document.getElementById('copyIdBtn');
+    const peerIdInput = document.getElementById('peerIdInput');
+    const connectBtn = document.getElementById('connectBtn');
+    const scanBtn = document.getElementById('scanBtn');
+    const connStatus = document.getElementById('connStatus');
+    const pickBtn = document.getElementById('pickBtn');
+    const fileInput = document.getElementById('fileInput');
+    const fileNameEl = document.getElementById('fileName');
+    const fileSizeEl = document.getElementById('fileSize');
+    const sendBtn = document.getElementById('sendBtn');
+    const txBar = document.getElementById('txBar');
+    const txPct = document.getElementById('txPct');
+    const rxBar = document.getElementById('rxBar');
+    const rxPct = document.getElementById('rxPct');
+
+    let peer = null;
+    let conn = null;
+    let myId = '';
+    let selFile = null;
+    let autoId = true; // 是否自动生成短 ID（false = 用户自定义）
+
+    // 短 ID 字符集：去掉了易混淆的 0O1Il
+    const ID_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+    function genShortId(len) {
+      let s = '';
+      for (let i = 0; i < len; i++) {
+        s += ID_CHARS[Math.floor(Math.random() * ID_CHARS.length)];
+      }
+      return s;
+    }
+
+    function fmtSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1073741824) return (bytes / 1048576).toFixed(2) + ' MB';
+      return (bytes / 1073741824).toFixed(2) + ' GB';
+    }
+
+    function setStatus(text, cls) {
+      connStatus.textContent = text;
+      connStatus.className = 'status-line' + (cls ? ' ' + cls : '');
+    }
+
+    // ===== 初始化 Peer（信令） =====
+    function initPeer(id) {
+      if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
+      conn = null;
+      sendBtn.disabled = true;
+      myIdEl.textContent = '正在连接信令服务器…';
+      qrBox.innerHTML = '';
+      setStatus('连接信令服务器中…');
+      peer = new Peer(id); // 指定 ID（短码或自定义），PeerJS 1.5 默认连 0.peerjs.com
+      peer.on('open', id => {
+        myId = id;
+        myIdEl.textContent = id;
+        new QRCode(qrBox, { text: id, width: 144, height: 144, correctLevel: QRCode.CorrectLevel.M });
+        setStatus('等待对方连接…');
+      });
+      peer.on('connection', c => setupConn(c)); // 对方连我
+      peer.on('error', err => {
+        if (err.type === 'unavailable-id' || err.type === 'invalid-id') {
+          if (autoId) {
+            setStatus('ID 被占用，自动换一个…');
+            setTimeout(() => initPeer(genShortId(5)), 600);
+          } else {
+            setStatus('ID「' + id + '」已被占用，换个自定义 ID 或重新生成', 'err');
+          }
+        } else if (err.type === 'peer-unavailable') {
+          setStatus('对方 ID 不存在或不在线', 'err');
+        } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
+          setStatus('信令服务器连接失败，请检查网络后刷新重试', 'err');
+        } else if (err.type === 'browser-incompatible') {
+          setStatus('当前浏览器不支持 WebRTC，请用 Chrome / Edge', 'err');
+        } else {
+          console.log('Peer error:', err.type, err);
+        }
+      });
+      peer.on('disconnected', () => {
+        setStatus('连接中断，尝试重连…');
+        setTimeout(() => { try { peer.reconnect(); } catch (e) {} }, 1000);
+      });
+      peer.on('close', () => setStatus('连接已关闭'));
+    }
+
+    // 换一个自动短 ID
+    document.getElementById('regenerateBtn').addEventListener('click', () => {
+      autoId = true;
+      initPeer(genShortId(5));
+    });
+
+    // 使用自定义 ID
+    document.getElementById('applyIdBtn').addEventListener('click', () => {
+      const val = document.getElementById('customId').value.trim();
+      if (!val) { setStatus('请输入自定义 ID', 'err'); return; }
+      if (!/^[A-Za-z0-9_-]{2,12}$/.test(val)) {
+        setStatus('ID 需为 2-12 位字母/数字/下划线/连字符', 'err');
+        return;
+      }
+      autoId = false;
+      initPeer(val);
+    });
+
+    // ===== 连接管理 =====
+    function setupConn(c) {
+      conn = c;
+      conn.on('open', () => {
+        setStatus('已连接：' + conn.peer, 'ok');
+        sendBtn.disabled = !selFile;
+      });
+      conn.on('data', handleData);
+      conn.on('close', () => {
+        if (conn === c) {
+          conn = null;
+          setStatus('连接已断开', 'err');
+          sendBtn.disabled = true;
+        }
+      });
+      conn.on('error', err => setStatus('连接错误：' + (err.type || err.message), 'err'));
+    }
+
+    connectBtn.addEventListener('click', () => {
+      const id = peerIdInput.value.trim().replace(/^ft:\/\//, '');
+      if (!id) { setStatus('请输入对方的会话 ID', 'err'); return; }
+      if (!peer || !peer.id) { setStatus('信令服务器尚未就绪，请稍候', 'err'); return; }
+      setStatus('正在连接 ' + id + ' …');
+      const c = peer.connect(id, { reliable: true });
+      setupConn(c);
+    });
+
+    copyIdBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(myId);
+        copyIdBtn.textContent = '已复制 ✓';
+        setTimeout(() => { copyIdBtn.textContent = '复制 ID'; }, 1500);
+      } catch (e) { copyIdBtn.textContent = '复制失败'; }
+    });
+
+    // ===== 扫码连接（摄像头） =====
+    let scanStream = null, scanTimer = null;
+
+    scanBtn.addEventListener('click', async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatus('当前环境无法使用摄像头（需 HTTPS 或 localhost）', 'err');
+        return;
+      }
+      try {
+        scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        const video = document.createElement('video');
+        video.muted = true;
+        video.playsInline = true;
+        video.srcObject = scanStream;
+        document.body.appendChild(video);
+        video.style.cssText = 'position:fixed;top:10px;right:10px;width:240px;border-radius:10px;z-index:99;border:2px solid #2563eb';
+        await video.play();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        setStatus('扫描中…将对方二维码对准摄像头（点视频关闭）', 'ok');
+        scanBtn.textContent = '关闭扫码';
+
+        const stopScan = () => {
+          clearInterval(scanTimer);
+          if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+          video.remove();
+          scanBtn.textContent = '扫码连接';
+        };
+        video.addEventListener('click', stopScan);
+        scanBtn.onclick = stopScan;
+
+        scanTimer = setInterval(() => {
+          if (!scanStream) return;
+          if (video.readyState < 2) return;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+          if (code && code.data) {
+            const id = code.data.trim().replace(/^ft:\/\//, '');
+            if (id) {
+              stopScan();
+              peerIdInput.value = id;
+              setStatus('已识别，正在连接 ' + id + ' …');
+              const c = peer.connect(id, { reliable: true });
+              setupConn(c);
+            }
+          }
+        }, 150);
+      } catch (err) {
+        setStatus('无法访问摄像头：' + (err.message || err), 'err');
+      }
+    });
+
+    // ===== 文件选择与发送 =====
+    pickBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files[0];
+      if (!f) return;
+      selFile = f;
+      fileNameEl.textContent = f.name;
+      fileSizeEl.textContent = fmtSize(f.size);
+      sendBtn.disabled = !conn;
+      fileInput.value = '';
+    });
+
+    const CHUNK = 256 * 1024;
+
+    async function sendFile(file) {
+      const total = file.size;
+      let offset = 0, seq = 0;
+      txBar.style.width = '0%';
+      txPct.textContent = '准备发送…';
+      conn.send({ type: 'meta', name: file.name, size: total });
+      while (offset < total) {
+        const buf = await file.slice(offset, offset + CHUNK).arrayBuffer();
+        // 背压控制：DataChannel 缓冲过大时等待
+        while (conn.dataChannel && conn.dataChannel.bufferedAmount > 2 * 1024 * 1024) {
+          await new Promise(r => setTimeout(r, 50));
+        }
+        conn.send({ type: 'chunk', seq: seq++, data: buf });
+        offset += CHUNK;
+        txBar.style.width = Math.min(100, (offset / total) * 100) + '%';
+        txPct.textContent = '发送中 ' + fmtSize(offset) + ' / ' + fmtSize(total) + '（' + Math.round(offset / total * 100) + '%）';
+      }
+      conn.send({ type: 'done' });
+      txPct.textContent = '✓ 发送完成';
+    }
+
+    sendBtn.addEventListener('click', () => {
+      if (!conn || !selFile) return;
+      sendBtn.disabled = true;
+      sendFile(selFile);
+    });
+
+    // ===== 接收 =====
+    const recvState = { name: '', total: 0, got: 0, parts: [] };
+
+    function handleData(data) {
+      // 二进制块：可能是 ArrayBuffer / Uint8Array / Blob
+      if (data && typeof data === 'object' && data.type) {
+        if (data.type === 'meta') {
+          recvState.name = data.name;
+          recvState.total = data.size;
+          recvState.got = 0;
+          recvState.parts = [];
+          rxBar.style.width = '0%';
+          rxPct.textContent = '接收中：' + data.name;
+        } else if (data.type === 'chunk') {
+          let bytes;
+          if (data.data instanceof ArrayBuffer) bytes = new Uint8Array(data.data);
+          else if (data.data && data.data.buffer) bytes = new Uint8Array(data.data.buffer, data.data.byteOffset, data.data.byteLength);
+          else bytes = new Uint8Array(data.data);
+          recvState.parts.push(bytes);
+          recvState.got += bytes.byteLength;
+          rxBar.style.width = Math.min(100, (recvState.got / recvState.total) * 100) + '%';
+          rxPct.textContent = '接收中 ' + fmtSize(recvState.got) + ' / ' + fmtSize(recvState.total) + '（' + Math.round(recvState.got / recvState.total * 100) + '%）';
+        } else if (data.type === 'done') {
+          const blob = new Blob(recvState.parts, { type: 'application/octet-stream' });
+          rxPct.textContent = '✓ 接收完成：' + recvState.name + '（' + fmtSize(recvState.got) + '）';
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = recvState.name;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          setTimeout(() => {
+            rxPct.textContent = '已自动下载。可再次发送/接收。';
+          }, 3000);
+        }
+      }
+    }
+
+    // ===== 启动 =====
+    initPeer(genShortId(5)); // 自动生成 5 位短 ID
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
