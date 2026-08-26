@@ -405,18 +405,42 @@
       const duration = video.duration;
       const interval = 1 / fps;
       const count = Math.min(Math.floor(duration * fps), 500);
+      if (count < 1) throw new Error('视频太短，无法抽取帧');
+      const delay = Math.round(1000 / fps);
       const frames = [];
+
+      // 先定位到开头
+      video.currentTime = 0;
+      await new Promise(r => {
+        const f = () => { video.removeEventListener('seeked', f); r(); };
+        video.addEventListener('seeked', f);
+      });
+
+      // 静音播放（muted 无需手势），播放中逐帧截取，避免 seek 取到相同帧
+      await video.play();
+      await new Promise(r => {
+        if (!video.paused) r();
+        else video.addEventListener('playing', r, { once: true });
+      });
+
+      const raf = () => new Promise(r => requestAnimationFrame(r));
       for (let i = 0; i < count; i++) {
-        video.currentTime = Math.min(i * interval, duration - 0.05);
-        await new Promise(r => {
-          const onSeeked = () => { video.removeEventListener('seeked', onSeeked); r(); };
-          video.addEventListener('seeked', onSeeked);
-        });
+        const target = Math.min(i * interval, duration - 0.02);
+        let guard = 0;
+        while (video.currentTime < target && guard < 1000) { await raf(); guard++; }
+        if (video.currentTime < target) break; // 播放结束或卡住，取已抽帧
         ctx.drawImage(video, 0, 0, w, h);
-        frames.push({ canvas, delay: Math.round(1000 / fps) });
+        // 克隆画布，保证每帧像素独立（否则 GIF 所有帧相同 → 不动的图）
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        c.getContext('2d').drawImage(canvas, 0, 0);
+        frames.push({ canvas: c, delay: delay });
         onProgress((i + 1) / count);
       }
-      return { frames, w, h, count };
+      video.pause();
+      if (!frames.length) throw new Error('未能抽取到帧');
+      return { frames, w, h, count: frames.length };
     }
 
     // ===== 编码 =====
