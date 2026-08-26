@@ -532,7 +532,7 @@
         resultMeta.innerHTML = '大小 <b>' + (res.sizeKB < 1024 ? res.sizeKB.toFixed(0) + ' KB' : (res.sizeKB / 1024).toFixed(2) + ' MB') +
           '</b> · 分辨率 ' + res.params.w + '×' + res.params.h +
           ' · fps ' + res.params.fps + ' · 质量 ' + res.params.quality;
-        resultEl.style.display = '';
+        resultEl.style.display = 'block';
         bar.style.width = '100%';
         pctEl.textContent = '✓ 转换完成';
       } catch (err) {
