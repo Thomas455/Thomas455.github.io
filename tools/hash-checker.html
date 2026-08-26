@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>哈希校验工具 · Thomas455</title>
+  <meta name="description" content="拖入文件计算 MD5、SHA-1、SHA-256、SHA-512 哈希值，纯本地计算。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(37, 99, 235, 0.35);
+      border-radius: 16px;
+      padding: 40px 20px;
+      text-align: center;
+      background: rgba(37, 99, 235, 0.03);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.08);
+    }
+
+    .dz-main {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .dz-sub {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .file-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 10px;
+    }
+
+    .file-info .fname {
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    .progress {
+      height: 6px;
+      background: rgba(37, 99, 235, 0.1);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 6px;
+      display: none;
+    }
+
+    .progress .bar {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.15s;
+    }
+
+    .pct {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .hash-card {
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+    }
+
+    .hash-card .h-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .hash-card .h-name {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--muted);
+      width: 64px;
+      flex-shrink: 0;
+    }
+
+    .hash-card .h-name.md5 { color: #2563eb; }
+    .hash-card .h-name.sha1 { color: #059669; }
+    .hash-card .h-name.sha256 { color: #d97706; }
+    .hash-card .h-name.sha512 { color: #dc2626; }
+
+    .hash-card .h-val {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.88rem;
+      word-break: break-all;
+      color: var(--text);
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hash-card .h-val.pending {
+      color: #94a3b8;
+    }
+
+    .hash-card .h-copy {
+      flex-shrink: 0;
+      padding: 4px 12px;
+      font-size: 0.78rem;
+      border-radius: 8px;
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      background: rgba(37, 99, 235, 0.06);
+      color: var(--accent);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .hash-card .h-copy:hover {
+      background: rgba(37, 99, 235, 0.15);
+    }
+
+    .cost {
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>哈希<span class="accent">校验工具</span></h1>
+      <p class="muted">拖入文件计算 MD5 / SHA-1 / SHA-256 / SHA-512，纯本地计算，文件不上传。</p>
+    </section>
+
+    <div class="dropzone" id="dropzone">
+      <div class="dz-main">拖入文件到这里，或点击选择</div>
+      <div class="dz-sub">支持任意文件，大文件自动分块计算</div>
+      <input type="file" id="fileInput" style="display:none">
+    </div>
+
+    <div id="fileInfo" class="file-info" style="display:none">
+      <span class="fname" id="fname"></span>
+      <span style="color:var(--muted);flex-shrink:0" id="fsize"></span>
+    </div>
+
+    <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+    <div class="pct" id="pct"></div>
+
+    <div id="hashList">
+      <div class="hash-card">
+        <div class="h-row">
+          <span class="h-name md5">MD5</span>
+          <span class="h-val pending" id="vMd5">等待文件…</span>
+          <button class="h-copy" data-target="vMd5">复制</button>
+        </div>
+      </div>
+      <div class="hash-card">
+        <div class="h-row">
+          <span class="h-name sha1">SHA-1</span>
+          <span class="h-val pending" id="vSha1">等待文件…</span>
+          <button class="h-copy" data-target="vSha1">复制</button>
+        </div>
+      </div>
+      <div class="hash-card">
+        <div class="h-row">
+          <span class="h-name sha256">SHA-256</span>
+          <span class="h-val pending" id="vSha256">等待文件…</span>
+          <button class="h-copy" data-target="vSha256">复制</button>
+        </div>
+      </div>
+      <div class="hash-card">
+        <div class="h-row">
+          <span class="h-name sha512">SHA-512</span>
+          <span class="h-val pending" id="vSha512">等待文件…</span>
+          <button class="h-copy" data-target="vSha512">复制</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="cost" id="cost"></p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/spark-md5.min.js"></script>
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fnameEl = document.getElementById('fname');
+    const fsizeEl = document.getElementById('fsize');
+    const progressEl = document.getElementById('progress');
+    const bar = document.getElementById('bar');
+    const pctEl = document.getElementById('pct');
+    const costEl = document.getElementById('cost');
+
+    const CHUNK = 8 * 1024 * 1024; // 8MB 分块
+
+    function fmtSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1073741824) return (bytes / 1048576).toFixed(2) + ' MB';
+      return (bytes / 1073741824).toFixed(2) + ' GB';
+    }
+
+    function setVal(id, text) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.classList.remove('pending');
+    }
+
+    function resetVals() {
+      // MD5 先算：显示计算中；SHA 等待（避免误导）
+      const md5El = document.getElementById('vMd5');
+      md5El.textContent = '计算中…';
+      md5El.classList.add('pending');
+      ['vSha1', 'vSha256', 'vSha512'].forEach(id => {
+        const el = document.getElementById(id);
+        el.textContent = '等待中…';
+        el.classList.add('pending');
+      });
+    }
+
+    async function compute(file) {
+      resetVals();
+      costEl.textContent = '';
+      progressEl.style.display = '';
+      pctEl.style.display = '';
+      bar.style.width = '0%';
+      const start = performance.now();
+      const subtle = window.crypto && window.crypto.subtle;
+      let md5Ok = true, shaOk = true;
+
+      // ① MD5：SparkMD5 增量 + 手动分块，显示精确进度
+      try {
+        const total = file.size;
+        let offset = 0;
+        const spark = new SparkMD5.ArrayBuffer();
+        while (offset < total) {
+          const buf = await file.slice(offset, offset + CHUNK).arrayBuffer();
+          spark.append(buf);
+          offset += CHUNK;
+          const p = Math.min(100, Math.round(offset / total * 100));
+          bar.style.width = p + '%';
+          pctEl.textContent = 'MD5：' + p + '%';
+        }
+        setVal('vMd5', spark.end());
+      } catch (err) {
+        md5Ok = false;
+        setVal('vMd5', '计算失败：' + (err && err.message ? err.message : err));
+      }
+
+      // ② SHA 系列：MD5 完成后开始（Web Crypto，仅安全上下文）
+      if (!subtle) {
+        shaOk = false;
+        ['vSha1', 'vSha256', 'vSha512'].forEach(id => {
+          document.getElementById(id).textContent = '当前环境不支持 Web Crypto（需 HTTPS 或 localhost 访问）';
+          document.getElementById(id).classList.add('pending');
+        });
+      } else {
+        ['vSha1', 'vSha256', 'vSha512'].forEach(id => {
+          document.getElementById(id).textContent = '计算中…';
+          document.getElementById(id).classList.add('pending');
+        });
+        try {
+          const buf = await file.arrayBuffer();
+          const [d1, d256, d512] = await Promise.all([
+            subtle.digest('SHA-1', buf),
+            subtle.digest('SHA-256', buf),
+            subtle.digest('SHA-512', buf)
+          ]);
+          const hex = ab => Array.from(new Uint8Array(ab)).map(b => b.toString(16).padStart(2, '0')).join('');
+          setVal('vSha1', hex(d1));
+          setVal('vSha256', hex(d256));
+          setVal('vSha512', hex(d512));
+        } catch (err) {
+          shaOk = false;
+          ['vSha1', 'vSha256', 'vSha512'].forEach(id => {
+            document.getElementById(id).textContent = '计算失败：' + (err && err.message ? err.message : err);
+            document.getElementById(id).classList.add('pending');
+          });
+        }
+      }
+
+      progressEl.style.display = 'none';
+      pctEl.style.display = 'none';
+      const ms = Math.round(performance.now() - start);
+      const warn = (!md5Ok || !shaOk) ? '（部分算法失败）' : '';
+      costEl.textContent = '计算完成，耗时 ' + ms + ' ms ' + warn;
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      fnameEl.textContent = file.name;
+      fsizeEl.textContent = fmtSize(file.size);
+      fileInfo.style.display = '';
+      compute(file);
+    }
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => { handleFile(fileInput.files[0]); fileInput.value = ''; });
+
+    // 复制
+    document.querySelectorAll('.h-copy').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const val = document.getElementById(btn.dataset.target).textContent;
+        if (!val || val.includes('等待') || val.includes('计算') || val.includes('失败')) return;
+        try {
+          await navigator.clipboard.writeText(val);
+          btn.textContent = '已复制 ✓';
+          setTimeout(() => { btn.textContent = '复制'; }, 1500);
+        } catch (e) {
+          btn.textContent = '失败';
+        }
+      });
+    });
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
