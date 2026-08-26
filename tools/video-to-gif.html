@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>视频转 GIF · Thomas455</title>
+  <meta name="description" content="视频转 GIF：支持多种视频格式，可自定义目标大小、帧率、质量，纯本地处理。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(37, 99, 235, 0.35);
+      border-radius: 16px;
+      padding: 40px 20px;
+      text-align: center;
+      background: rgba(37, 99, 235, 0.03);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.08);
+    }
+
+    .dz-main {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .dz-sub {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .param-card {
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+    }
+
+    .param-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .param label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .param input[type="number"],
+    .param input[type="range"] {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 0.9rem;
+    }
+
+    .param input[type="number"] { width: 110px; }
+
+    .mode-row {
+      display: flex;
+      gap: 18px;
+      margin-bottom: 14px;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    .mode-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .mode-row input[type="radio"] { accent-color: var(--accent); }
+
+    .progress {
+      height: 8px;
+      background: rgba(37, 99, 235, 0.1);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .progress .bar {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.15s;
+    }
+
+    .pct {
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .result {
+      text-align: center;
+      display: none;
+    }
+
+    .result img {
+      max-width: 100%;
+      max-height: 320px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: #fff;
+      margin-bottom: 10px;
+    }
+
+    .result .meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .result .meta b { color: var(--text); }
+
+    .video-info {
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      border-radius: 12px;
+      background: rgba(37, 99, 235, 0.06);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .video-info .vi-line {
+      margin: 2px 0;
+    }
+
+    .video-info b {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .warn {
+      background: rgba(180, 83, 9, 0.08);
+      border: 1px solid rgba(180, 83, 9, 0.2);
+      color: #b45309;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+
+    .vi-ph {
+      color: var(--muted);
+      opacity: 0.65;
+    }
+
+    .info {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>视频转 <span class="accent">GIF</span></h1>
+      <p class="muted">支持 MP4 / WebM / OGG / MOV 等格式，可自定义目标大小，纯本地处理。</p>
+    </section>
+
+    <div class="dropzone" id="dropzone">
+      <div class="dz-main">拖入视频文件到这里，或点击选择</div>
+      <div class="dz-sub">支持 MP4 / WebM / OGG / MOV 等浏览器可解码格式</div>
+      <input type="file" id="fileInput" accept="video/*" style="display:none">
+    </div>
+
+    <div class="warn" id="fileWarn" style="display:none"></div>
+
+    <div class="video-info" id="videoInfo">
+      <div class="vi-line">文件：<span class="vi-ph" id="viName">尚未选择视频（单次仅支持一个文件）</span></div>
+      <div class="vi-line">
+        时长：<span class="vi-ph" id="viDur">—</span>　|　分辨率：<span class="vi-ph" id="viRes">—</span>　|　大小：<span class="vi-ph" id="viSize">—</span>
+      </div>
+    </div>
+
+    <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+    <div class="pct" id="pct">拖入视频文件，或点击上方虚线区域选择</div>
+
+    <div class="param-card">
+      <div class="mode-row">
+        <label><input type="radio" name="mode" value="target" checked> 目标大小（自动调参）</label>
+        <label><input type="radio" name="mode" value="manual"> 手动参数</label>
+      </div>
+      <div class="param-row" id="targetRow">
+        <div class="param">
+          <label>目标大小（KB）</label>
+          <input type="number" id="targetKB" value="2048" min="50">
+        </div>
+        <div class="param">
+          <label>起始帧率（fps）</label>
+          <input type="number" id="targetFps" value="15" min="1" max="30">
+        </div>
+        <div class="param">
+          <label>起始宽度（px，留空=原始）</label>
+          <input type="number" id="targetWidth" placeholder="留空">
+        </div>
+      </div>
+      <div class="param-row" id="manualRow" style="display:none">
+        <div class="param">
+          <label>帧率（fps）</label>
+          <input type="number" id="mFps" value="15" min="1" max="30">
+        </div>
+        <div class="param">
+          <label>宽度（px，留空=原始）</label>
+          <input type="number" id="mWidth" placeholder="留空">
+        </div>
+        <div class="param">
+          <label>质量：<span id="mQualityVal">10</span>（1-20，越小文件越小）</label>
+          <input type="range" id="mQuality" min="1" max="20" value="10" style="width:160px">
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:12px">
+      <button class="btn" id="goBtn" disabled>开始转换</button>
+    </div>
+
+    <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+    <div class="pct" id="pct"></div>
+
+    <div class="result" id="result">
+      <img id="gifPreview" alt="GIF 预览">
+      <div class="meta" id="resultMeta"></div>
+      <button class="btn" id="dlBtn">下载 GIF</button>
+    </div>
+
+    <p class="info">注意：目标大小模式会迭代尝试（降质量 → 缩尺寸 → 降帧率），大视频转换较慢；最多处理 500 帧。</p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/gif.js"></script>
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const goBtn = document.getElementById('goBtn');
+    const progressEl = document.getElementById('progress');
+    const bar = document.getElementById('bar');
+    const pctEl = document.getElementById('pct');
+    const resultEl = document.getElementById('result');
+    const gifPreview = document.getElementById('gifPreview');
+    const resultMeta = document.getElementById('resultMeta');
+    const dlBtn = document.getElementById('dlBtn');
+    const targetRow = document.getElementById('targetRow');
+    const manualRow = document.getElementById('manualRow');
+    const mQuality = document.getElementById('mQuality');
+    const mQualityVal = document.getElementById('mQualityVal');
+
+    // file:// 协议提示：Worker 不可用，建议用 localhost
+    if (location.protocol === 'file:') {
+      const w = document.getElementById('fileWarn');
+      w.style.display = '';
+      w.textContent = '⚠️ 检测到以文件方式打开：编码会降级为主线程（大视频较慢）。建议在项目目录运行 python -m http.server 8000 后用 http://localhost:8000 访问。';
+    }
+
+    let videoFile = null;
+    let videoEl = null;
+    let finalBlob = null;
+    let finalParams = null;
+
+    mQuality.addEventListener('input', () => { mQualityVal.textContent = mQuality.value; });
+
+    // 模式切换
+    document.querySelectorAll('input[name="mode"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const target = document.querySelector('input[name="mode"]:checked').value === 'target';
+        targetRow.style.display = target ? '' : 'none';
+        manualRow.style.display = target ? 'none' : '';
+      });
+    });
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 1) {
+        alert('一次只支持一个视频文件，已使用第一个文件');
+      }
+      handleFile(files[0]);
+    });
+    fileInput.addEventListener('change', () => { handleFile(fileInput.files[0]); fileInput.value = ''; });
+
+    function fmtSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(2) + ' MB';
+    }
+
+    function fmtDur(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.round(sec % 60);
+      return m + ' 分 ' + s + ' 秒';
+    }
+
+    async function handleFile(file) {
+      if (!file || !file.type.startsWith('video/')) { alert('请选择视频文件'); return; }
+      videoFile = file;
+      resultEl.style.display = 'none';
+      goBtn.disabled = true;
+      videoEl = null;
+
+      document.getElementById('viName').textContent = file.name;
+      document.getElementById('viName').classList.remove('vi-ph');
+      document.getElementById('viSize').textContent = fmtSize(file.size);
+      document.getElementById('viSize').classList.remove('vi-ph');
+      document.getElementById('viDur').textContent = '解析中…';
+      document.getElementById('viDur').classList.remove('vi-ph');
+      document.getElementById('viRes').textContent = '解析中…';
+      document.getElementById('viRes').classList.remove('vi-ph');
+
+      bar.style.width = '30%';
+      pctEl.textContent = '正在解析视频…';
+
+      try {
+        videoEl = await loadVideo(file);
+        bar.style.width = '100%';
+        pctEl.textContent = '✓ 视频加载完成，可以开始转换';
+        document.getElementById('viDur').textContent = fmtDur(videoEl.duration);
+        document.getElementById('viRes').textContent = videoEl.videoWidth + ' × ' + videoEl.videoHeight;
+        goBtn.disabled = false;
+      } catch (err) {
+        bar.style.width = '0%';
+        pctEl.textContent = '✗ 视频解析失败：' + (err && err.message ? err.message : err);
+      }
+    }
+
+    // ===== 抽帧 =====
+    function loadVideo(file) {
+      return new Promise((resolve, reject) => {
+        const v = document.createElement('video');
+        v.muted = true;
+        v.playsInline = true;
+        v.preload = 'auto';
+        v.src = URL.createObjectURL(file);
+        v.onloadedmetadata = () => resolve(v);
+        v.onerror = () => reject(new Error('视频解码失败，可能是不支持的格式'));
+      });
+    }
+
+    async function extractFrames(video, fps, width, onProgress) {
+      const scale = width ? width / video.videoWidth : 1;
+      const w = Math.max(2, Math.round(video.videoWidth * scale / 2) * 2);
+      const h = Math.max(2, Math.round(video.videoHeight * scale / 2) * 2);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      const duration = video.duration;
+      const interval = 1 / fps;
+      const count = Math.min(Math.floor(duration * fps), 500);
+      const frames = [];
+      for (let i = 0; i < count; i++) {
+        video.currentTime = Math.min(i * interval, duration - 0.05);
+        await new Promise(r => {
+          const onSeeked = () => { video.removeEventListener('seeked', onSeeked); r(); };
+          video.addEventListener('seeked', onSeeked);
+        });
+        ctx.drawImage(video, 0, 0, w, h);
+        frames.push({ canvas, delay: Math.round(1000 / fps) });
+        onProgress((i + 1) / count);
+      }
+      return { frames, w, h, count };
+    }
+
+    // ===== 编码 =====
+    async function createGif(options) {
+      // 优先用 Blob URL 加载 Worker（兼容 file:// 环境）
+      try {
+        const res = await fetch('../assets/js/gif.worker.js');
+        if (res.ok) {
+          const blob = new Blob([await res.text()], { type: 'application/javascript' });
+          options.workerScript = URL.createObjectURL(blob);
+        }
+      } catch (e) { /* 忽略，走主线程 */ }
+      if (!options.workerScript) {
+        options.workers = 0; // file:// 下 Worker 受限，降级为主线程编码
+      }
+      return new GIF(options);
+    }
+
+    function encodeGif(frames, w, h, quality, onProgress) {
+      return new Promise(async (resolve, reject) => {
+        const gif = await createGif({
+          workers: 2,
+          quality: quality,
+          width: w,
+          height: h
+        });
+        gif.on('progress', onProgress);
+        gif.on('finished', blob => resolve(blob));
+        gif.on('abort', () => reject(new Error('编码中断')));
+        frames.forEach(f => gif.addFrame(f.canvas, { delay: f.delay, copy: true }));
+        gif.render();
+      });
+    }
+
+    // ===== 目标大小迭代 =====
+    async function runTarget(video, targetKB, startFps, startWidth) {
+      let fps = startFps, quality = 10, width = startWidth || null;
+      for (let round = 0; round < 8; round++) {
+        const label = '第 ' + (round + 1) + ' 次尝试（fps=' + fps + ' 质量=' + quality + ' 宽=' + (width || '原始') + '）';
+        pctEl.textContent = '抽帧中：' + label;
+        const { frames, w, h } = await extractFrames(video, fps, width, p => {
+          bar.style.width = (p * 50) + '%';
+          pctEl.textContent = label + ' · 抽帧 ' + Math.round(p * 100) + '%';
+        });
+        bar.style.width = '50%';
+        pctEl.textContent = label + ' · 编码中…';
+        const blob = await encodeGif(frames, w, h, quality, p => {
+          bar.style.width = (50 + p * 50) + '%';
+          pctEl.textContent = label + ' · 编码 ' + Math.round(p * 100) + '%';
+        });
+        const sizeKB = blob.size / 1024;
+        if (sizeKB <= targetKB) {
+          return { blob, params: { fps, quality, width: width || '原始', w, h }, sizeKB };
+        }
+        // 调整参数
+        if (quality > 2) {
+          quality -= 2;
+        } else if (!width || width > 160) {
+          width = width ? Math.max(120, Math.round(width * 0.7)) : 480;
+          quality = 10;
+        } else if (fps > 4) {
+          fps = Math.max(4, fps - 5);
+          quality = 10;
+        } else {
+          break;
+        }
+      }
+      // 兜底：最后一次最小参数再试
+      const { frames, w, h } = await extractFrames(video, Math.min(fps, 4), width, p => {
+        bar.style.width = (p * 50) + '%';
+      });
+      bar.style.width = '50%';
+      pctEl.textContent = '使用最小参数编码…';
+      const blob = await encodeGif(frames, w, h, 1, p => { bar.style.width = (50 + p * 50) + '%'; });
+      return { blob, params: { fps: Math.min(fps, 4), quality: 1, width: width || '原始', w, h }, sizeKB: blob.size / 1024 };
+    }
+
+    async function runManual(video) {
+      const fps = Math.max(1, parseInt(document.getElementById('mFps').value, 10) || 15);
+      const width = parseInt(document.getElementById('mWidth').value, 10) || null;
+      const quality = parseInt(mQuality.value, 10);
+      pctEl.textContent = '抽帧中…';
+      const { frames, w, h } = await extractFrames(video, fps, width, p => {
+        bar.style.width = (p * 50) + '%';
+        pctEl.textContent = '抽帧 ' + Math.round(p * 100) + '%';
+      });
+      bar.style.width = '50%';
+      pctEl.textContent = '编码中…';
+      const blob = await encodeGif(frames, w, h, quality, p => {
+        bar.style.width = (50 + p * 50) + '%';
+        pctEl.textContent = '编码 ' + Math.round(p * 100) + '%';
+      });
+      return { blob, params: { fps, quality, width: width || '原始', w, h }, sizeKB: blob.size / 1024 };
+    }
+
+    // ===== 开始 =====
+    goBtn.addEventListener('click', async () => {
+      if (!videoFile) return;
+      goBtn.disabled = true;
+      resultEl.style.display = 'none';
+      bar.style.width = '0%';
+      try {
+        const video = videoEl || await loadVideo(videoFile); // 复用导入时已解析的视频
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const res = mode === 'target'
+          ? await runTarget(video, parseFloat(document.getElementById('targetKB').value) || 2048,
+              Math.max(1, parseInt(document.getElementById('targetFps').value, 10) || 15),
+              parseInt(document.getElementById('targetWidth').value, 10) || null)
+          : await runManual(video);
+        finalBlob = res.blob;
+        finalParams = res.params;
+        gifPreview.src = URL.createObjectURL(res.blob);
+        resultMeta.innerHTML = '大小 <b>' + (res.sizeKB < 1024 ? res.sizeKB.toFixed(0) + ' KB' : (res.sizeKB / 1024).toFixed(2) + ' MB') +
+          '</b> · 分辨率 ' + res.params.w + '×' + res.params.h +
+          ' · fps ' + res.params.fps + ' · 质量 ' + res.params.quality;
+        resultEl.style.display = '';
+        bar.style.width = '100%';
+        pctEl.textContent = '✓ 转换完成';
+      } catch (err) {
+        bar.style.width = '0%';
+        pctEl.textContent = '✗ 转换失败：' + (err && err.message ? err.message : err);
+      }
+      goBtn.disabled = false;
+    });
+
+    dlBtn.addEventListener('click', () => {
+      if (!finalBlob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(finalBlob);
+      a.download = (videoFile ? videoFile.name.replace(/\.[^.]+$/, '') : 'video') + '.gif';
+      a.click();
+    });
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
