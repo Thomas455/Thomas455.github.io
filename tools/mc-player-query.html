@@ -399,41 +399,47 @@
       if (querying) return; // 防重复提交
       querying = true;
       queryBtn.disabled = true;
-      const name = nameInput.value.trim();
-      if (!name) { progress.textContent = '请输入玩家名'; querying = false; queryBtn.disabled = false; return; }
-      resultEl.innerHTML = '';
-      progress.textContent = '正在查询 ' + name + ' …';
       try {
-        const resp = await fetchWithRetry('https://api.ashcon.app/mojang/v2/user/' + encodeURIComponent(name));
-        if (resp.status === 404) {
+        const name = nameInput.value.trim();
+        if (!name) { progress.textContent = '请输入玩家名'; return; }
+        resultEl.innerHTML = '';
+        progress.textContent = '正在查询 ' + name + ' …';
+
+        // 网络请求（404 / 网络错误在此处理）
+        try {
+          const resp = await fetchWithRetry('https://api.ashcon.app/mojang/v2/user/' + encodeURIComponent(name));
+          if (resp.status === 404) {
+            progress.textContent = '';
+            renderError(name, '玩家不存在（不是正版账号或名字拼写有误）');
+            return;
+          }
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          var data = await resp.json();
+        } catch (err) {
           progress.textContent = '';
-          renderError(name, '玩家不存在（不是正版账号或名字拼写有误）');
+          let msg;
+          if (err instanceof TypeError || err.name === 'AbortError') {
+            msg = '网络请求失败：多次重试仍无法访问 api.ashcon.app。可能是网络波动或该服务暂时不可达，请稍后重试。';
+          } else {
+            msg = err.message || '查询失败，请重试';
+          }
+          renderError(name, msg);
           return;
         }
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        var data = await resp.json();
-      } catch (err) {
-        progress.textContent = '';
-        let msg;
-        if (err instanceof TypeError || err.name === 'AbortError') {
-          msg = '网络请求失败：多次重试仍无法访问 api.ashcon.app。可能是网络波动或该服务暂时不可达，请稍后重试。';
-        } else {
-          msg = err.message || '查询失败，请重试';
+
+        // 渲染（出错时输出到控制台，便于排查）
+        try {
+          saveHistory(name);
+          renderHistory();
+          renderPlayer(data, name);
+          progress.textContent = '';
+        } catch (err) {
+          console.error('渲染出错：', err);
+          progress.textContent = '';
+          renderError(name, '渲染出错：' + (err && err.message ? err.message : '未知错误'));
         }
-        renderError(name, msg);
-        return;
-      }
-      // 渲染与网络请求分离：渲染出错时输出到控制台，便于排查
-      try {
-        saveHistory(name);
-        renderHistory();
-        renderPlayer(data, name);
-        progress.textContent = '';
-      } catch (err) {
-        console.error('渲染出错：', err);
-        progress.textContent = '';
-        renderError(name, '渲染出错：' + (err && err.message ? err.message : '未知错误'));
       } finally {
+        // 任何路径（成功/404/网络错误/渲染错误）都恢复按钮状态
         querying = false;
         queryBtn.disabled = false;
       }

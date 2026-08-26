@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>硬件信息查看 · Thomas455</title>
+  <meta name="description" content="查看本机硬件信息：显卡、CPU、内存、显示器、网络等（浏览器可获取的部分）。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .hw-actions {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .hw-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .hw-card {
+      padding: 18px 20px;
+    }
+
+    .hw-card h3 {
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hw-card h3 .ico {
+      font-size: 1.1rem;
+    }
+
+    .hw-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 5px 0;
+      border-bottom: 1px dashed rgba(31, 35, 40, 0.08);
+      font-size: 0.86rem;
+    }
+
+    .hw-row:last-child {
+      border-bottom: none;
+    }
+
+    .hw-row .k {
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .hw-row .v {
+      text-align: right;
+      word-break: break-all;
+      font-weight: 600;
+    }
+
+    .note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-bottom: 48px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>硬件<span class="accent">信息查看</span></h1>
+      <p class="muted">查看本机硬件信息，以下数据<span class="accent">仅供参考</span>（浏览器安全模型允许暴露的部分），仅本地读取，不上传任何数据。</p>
+    </section>
+
+    <div class="hw-actions">
+      <button class="btn" id="refreshBtn">重新检测</button>
+    </div>
+
+    <section id="hwGrid" class="hw-grid">
+      <div class="hw-card glass"><h3><span class="ico">⏳</span>检测中</h3><p class="muted">正在收集硬件信息…</p></div>
+    </section>
+
+    <p class="note">以上数据仅供参考：浏览器无法获取 CPU 具体型号、内存品牌等系统级信息。内存容量与网络详情仅 Chromium 系浏览器（Chrome/Edge）支持。</p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // ===== 信息收集 =====
+    function detectOS(ua) {
+      if (/Windows NT 11|Windows NT 10/.test(ua)) return 'Windows 10 / 11';
+      if (/Windows NT 6\.3/.test(ua)) return 'Windows 8.1';
+      if (/Windows NT 6\.1/.test(ua)) return 'Windows 7';
+      if (/Android/.test(ua)) return 'Android';
+      if (/iPhone|iPad|iPod/.test(ua)) return 'iOS';
+      if (/Mac OS X/.test(ua)) {
+        const m = ua.match(/Mac OS X (\d+[._]\d+)/);
+        return 'macOS' + (m ? ' ' + m[1].replace('_', '.') : '');
+      }
+      if (/CrOS/.test(ua)) return 'ChromeOS';
+      if (/Linux/.test(ua)) return 'Linux';
+      return '未知';
+    }
+
+    function detectBrowser(ua) {
+      if (/Edg\//.test(ua)) return 'Microsoft Edge';
+      if (/OPR\//.test(ua)) return 'Opera';
+      if (/Firefox\//.test(ua)) return 'Mozilla Firefox';
+      if (/Chrome\//.test(ua)) return 'Google Chrome';
+      if (/Safari\//.test(ua)) return 'Apple Safari';
+      return '未知';
+    }
+
+    function getGPU() {
+      try {
+        const c = document.createElement('canvas');
+        const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+        if (!gl) return null;
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        return {
+          renderer: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : String(gl.getParameter(gl.RENDERER)),
+          vendor: ext ? gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) : String(gl.getParameter(gl.VENDOR)),
+          version: String(gl.getParameter(gl.VERSION)),
+          sl: String(gl.getParameter(gl.SHADING_LANGUAGE_VERSION))
+        };
+      } catch (e) { return null; }
+    }
+
+    function measureRefreshRate(cb) {
+      let frames = 0;
+      const start = performance.now();
+      function tick() {
+        frames++;
+        const el = performance.now() - start;
+        if (el >= 1100) { cb(Math.round(frames * 1000 / el)); return; }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function hz(fn) {
+      const d = document.createElement('div');
+      d.className = 'hw-card glass';
+      d.innerHTML = fn();
+      return d;
+    }
+
+    function row(k, v) {
+      return '<div class="hw-row"><span class="k">' + k + '</span><span class="v">' + (v || '未知') + '</span></div>';
+    }
+
+    async function collect() {
+      const ua = navigator.userAgent;
+      const scr = screen;
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+
+      const sections = [];
+
+      // 系统与浏览器
+      sections.push(hz(() =>
+        '<h3><span class="ico">🖥️</span>系统与浏览器</h3>' +
+        row('操作系统', detectOS(ua)) +
+        row('浏览器', detectBrowser(ua)) +
+        row('平台架构', navigator.platform || '未知') +
+        row('语言', navigator.language) +
+        row('User-Agent', ua)
+      ));
+
+      // 处理器
+      sections.push(hz(() =>
+        '<h3><span class="ico">⚙️</span>处理器</h3>' +
+        row('逻辑核心数', navigator.hardwareConcurrency ? navigator.hardwareConcurrency + ' 核' : '未知') +
+        row('并发提示', navigator.hardwareConcurrency || '未知')
+      ));
+
+      // 内存
+      sections.push(hz(() =>
+        '<h3><span class="ico">🧠</span>内存</h3>' +
+        row('设备内存', navigator.deviceMemory ? navigator.deviceMemory + ' GB' : '仅 Chromium 系支持')
+      ));
+
+      // 显卡
+      const gpu = getGPU();
+      sections.push(hz(() => {
+        if (!gpu) return '<h3><span class="ico">🎮</span>显卡</h3>' + row('检测结果', 'WebGL 不可用');
+        return '<h3><span class="ico">🎮</span>显卡</h3>' +
+          row('显卡型号', gpu.renderer) +
+          row('厂商', gpu.vendor) +
+          row('WebGL 版本', gpu.version) +
+          row('着色器版本', gpu.sl);
+      }));
+
+      // 显示器
+      sections.push(hz(() =>
+        '<h3><span class="ico">🖥️</span>显示器</h3>' +
+        row('分辨率', scr.width + ' × ' + scr.height) +
+        row('可用区域', scr.availWidth + ' × ' + scr.availHeight) +
+        row('色彩深度', scr.colorDepth + ' bit') +
+        row('像素比', window.devicePixelRatio || 1) +
+        row('屏幕方向', (screen.orientation && screen.orientation.type) || '未知')
+      ));
+
+      // 网络
+      sections.push(hz(() => {
+        if (!conn) return '<h3><span class="ico">🌐</span>网络</h3>' + row('详情', '仅 Chromium 系支持');
+        const eff = conn.downlink != null ? conn.downlink + ' Mbps' : '未知';
+        const rtt = conn.rtt != null ? conn.rtt + ' ms' : '未知';
+        const type = conn.effectiveType || conn.type || '未知';
+        return '<h3><span class="ico">🌐</span>网络</h3>' +
+          row('连接类型', type) +
+          row('有效带宽', eff) +
+          row('往返时延 RTT', rtt) +
+          row('在线状态', navigator.onLine ? '在线' : '离线');
+      }));
+
+      // 存储
+      let storageRow = row('存储配额', '估算中…');
+      if (navigator.storage && navigator.storage.estimate) {
+        try {
+          const est = await navigator.storage.estimate();
+          const mb = v => v != null ? (v / 1024 / 1024).toFixed(0) + ' MB' : '未知';
+          storageRow = row('已用空间', mb(est.usage)) + row('总配额', mb(est.quota));
+        } catch (e) { storageRow = row('存储信息', '获取失败'); }
+      }
+      sections.push(hz(() => '<h3><span class="ico">💾</span>存储</h3>' + storageRow));
+
+      // 其他
+      sections.push(hz(() =>
+        '<h3><span class="ico">📱</span>其他</h3>' +
+        row('触控点数', navigator.maxTouchPoints || 0) +
+        row('Cookie 可用', navigator.cookieEnabled ? '是' : '否') +
+        row('时区', Intl.DateTimeFormat().resolvedOptions().timeZone || '未知') +
+        row('UA 位数', /WOW64|Win64|x64/.test(ua) ? '64 位' : '未知')
+      ));
+
+      // 刷新率（异步测量后补到显示器卡）
+      measureRefreshRate(hzVal => {
+        const cards = document.querySelectorAll('.hw-card');
+        // 找到显示器卡追加
+        const disp = [...cards].find(c => c.querySelector('h3') && c.querySelector('h3').textContent.includes('显示器'));
+        if (disp) disp.insertAdjacentHTML('beforeend', row('刷新率', hzVal + ' Hz（估算）'));
+      });
+
+      return sections;
+    }
+
+    async function render() {
+      const grid = document.getElementById('hwGrid');
+      grid.innerHTML = '';
+      const sections = await collect();
+      sections.forEach(s => grid.appendChild(s));
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', render);
+    render();
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
