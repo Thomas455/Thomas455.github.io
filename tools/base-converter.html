@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>进制转换器 · Thomas455</title>
+  <meta name="description" content="十进制/二进制/八进制/十六进制互转，支持补码显示与位运算演示。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .tool-card {
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .tool-card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 16px;
+    }
+
+    .bits-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .bits-row select {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 0.9rem;
+    }
+
+    .conv-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .conv-field label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .conv-field input,
+    .conv-field textarea {
+      width: 100%;
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: Consolas, Monaco, monospace;
+      outline: none;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+
+    .conv-field textarea {
+      resize: none;
+      overflow: hidden;
+      line-height: 1.5;
+    }
+
+    .conv-field input:focus {
+      border-color: var(--accent);
+    }
+
+    .conv-field input.invalid {
+      border-color: #dc2626;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+
+    .twos-block {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed rgba(31, 35, 40, 0.12);
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .twos-block .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 4px 0;
+    }
+
+    .twos-block code {
+      font-family: Consolas, Monaco, monospace;
+      background: rgba(37, 99, 235, 0.06);
+      padding: 1px 8px;
+      border-radius: 6px;
+      color: var(--text);
+    }
+
+    /* 位运算区 */
+    .op-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .op-row .field label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .op-row .field input,
+    .op-row .field select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: Consolas, Monaco, monospace;
+      outline: none;
+    }
+
+    .op-row .field input:focus {
+      border-color: var(--accent);
+    }
+
+    .op-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .op-table th, .op-table td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px dashed rgba(31, 35, 40, 0.1);
+    }
+
+    .op-table th {
+      color: var(--muted);
+      font-weight: 600;
+      width: 90px;
+    }
+
+    .op-table td code {
+      font-family: Consolas, Monaco, monospace;
+      word-break: break-all;
+    }
+
+    .op-table .expr {
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>进制<span class="accent">转换器</span></h1>
+      <p class="muted">十进制 / 二进制 / 八进制 / 十六进制互转，支持任意位数补码显示与位运算。</p>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>进制转换</h3>
+      <div class="bits-row">
+        <span>位数（影响补码显示）：</span>
+        <select id="bits">
+          <option value="8">8 位</option>
+          <option value="16">16 位</option>
+          <option value="32" selected>32 位</option>
+          <option value="64">64 位</option>
+        </select>
+      </div>
+      <div class="conv-grid">
+        <div class="conv-field">
+          <label>十进制（DEC）</label>
+          <textarea id="dec" rows="1" placeholder="如 255"></textarea>
+        </div>
+        <div class="conv-field">
+          <label>二进制（BIN）</label>
+          <textarea id="bin" rows="1" placeholder="如 11111111"></textarea>
+        </div>
+        <div class="conv-field">
+          <label>八进制（OCT）</label>
+          <textarea id="oct" rows="1" placeholder="如 377"></textarea>
+        </div>
+        <div class="conv-field">
+          <label>十六进制（HEX）</label>
+          <textarea id="hex" rows="1" placeholder="如 FF"></textarea>
+        </div>
+      </div>
+      <div class="twos-block" id="twos"></div>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>位运算演示</h3>
+      <div class="op-row">
+        <div class="field">
+          <label>操作数 A（输入进制）</label>
+          <input id="opA" placeholder="如 0b1100 / 0x0C / 12" value="12">
+        </div>
+        <div class="field">
+          <label>操作数 B</label>
+          <input id="opB" placeholder="如 0b1010 / 0x0A / 10" value="10">
+        </div>
+        <div class="field">
+          <label>A 的进制</label>
+          <select id="opBaseA">
+            <option value="0b" selected>二进制 0b</option>
+            <option value="0x">十六进制 0x</option>
+            <option value="0o">八进制 0o</option>
+            <option value="">十进制</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>B 的进制</label>
+          <select id="opBaseB">
+            <option value="0b" selected>二进制 0b</option>
+            <option value="0x">十六进制 0x</option>
+            <option value="0o">八进制 0o</option>
+            <option value="">十进制</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>移位位数 n</label>
+          <input id="opShift" value="2" inputmode="numeric">
+        </div>
+      </div>
+      <table class="op-table">
+        <tr><th>按位与</th><td class="expr">A &amp; B</td><td><code id="rAnd">—</code></td></tr>
+        <tr><th>按位或</th><td class="expr">A | B</td><td><code id="rOr">—</code></td></tr>
+        <tr><th>按位异或</th><td class="expr">A ^ B</td><td><code id="rXor">—</code></td></tr>
+        <tr><th>按位取反</th><td class="expr">~A</td><td><code id="rNot">—</code></td></tr>
+        <tr><th>左移</th><td class="expr">A &lt;&lt; n</td><td><code id="rLsh">—</code></td></tr>
+        <tr><th>逻辑右移</th><td class="expr">A &gt;&gt;&gt; n</td><td><code id="rRsh">—</code></td></tr>
+      </table>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const decI = document.getElementById('dec');
+    const binI = document.getElementById('bin');
+    const octI = document.getElementById('oct');
+    const hexI = document.getElementById('hex');
+    const bitsSel = document.getElementById('bits');
+    const twosEl = document.getElementById('twos');
+
+    let updating = false;
+
+    // ===== 解析：按进制把字符串解析为 BigInt，非法返回 null =====
+    // 全角数字/字母 → 半角（兼容中文输入法）
+    function toHalfWidth(s) {
+      return s.replace(/[\uFF10-\uFF19]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+              .replace(/[\uFF21-\uFF3A\uFF41-\uFF5A]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+    }
+
+    function parse(str, base) {
+      str = toHalfWidth(str).trim().replace(/_/g, '').replace(/^0x/i, '').replace(/^0b/i, '').replace(/^0o/i, '');
+      if (!str) return null;
+      const neg = str.startsWith('-');
+      const body = (neg ? str.slice(1) : str).replace(/^0+/, '') || '0';
+      const digits = '0123456789abcdefghijklmnopqrstuvwxyz'.slice(0, base);
+      for (const ch of body.toLowerCase()) {
+        if (!digits.includes(ch)) return 'invalid';
+      }
+      if (body === '0') return 0n;
+      let v = 0n;
+      const b = BigInt(base);
+      for (const ch of body.toLowerCase()) {
+        v = v * b + BigInt(digits.indexOf(ch));
+      }
+      return neg ? -v : v;
+    }
+
+    function fmt(v, base) {
+      if (v === null) return '';
+      const neg = v < 0n;
+      const body = (neg ? -v : v).toString(base).toUpperCase();
+      return (neg ? '-' : '') + body;
+    }
+
+    function toUnsigned(v, bits) {
+      const mod = 1n << BigInt(bits);
+      return ((v % mod) + mod) % mod;
+    }
+
+    // ===== 更新转换区 =====
+    const BASE = { dec: 10, bin: 2, oct: 8, hex: 16 };
+
+    function convert(source, value) {
+      if (updating) return;
+      updating = true;
+      const bits = parseInt(bitsSel.value, 10);
+      const v = parse(value, BASE[source] || 10);
+      const inputs = { dec: decI, bin: binI, oct: octI, hex: hexI };
+      // 清非法状态
+      Object.values(inputs).forEach(i => i.classList.remove('invalid'));
+
+      if (v === null) {
+        // 空输入：全部清空
+        if (source !== 'dec') decI.value = '';
+        if (source !== 'bin') binI.value = '';
+        if (source !== 'oct') octI.value = '';
+        if (source !== 'hex') hexI.value = '';
+        twosEl.innerHTML = '';
+        updating = false;
+        return;
+      }
+      if (v === 'invalid') {
+        inputs[source].classList.add('invalid');
+        twosEl.innerHTML = '<div>输入包含非法字符，无法解析</div>';
+        updating = false;
+        return;
+      }
+
+      if (source !== 'dec') decI.value = fmt(v, 10);
+      if (source !== 'bin') binI.value = fmt(v, 2);
+      if (source !== 'oct') octI.value = fmt(v, 8);
+      if (source !== 'hex') hexI.value = fmt(v, 16);
+
+      // 其他输入框内容变了，同步撑高
+      [decI, binI, octI, hexI].forEach(el => autoGrow(el));
+
+      // 补码显示
+      const mod = 1n << BigInt(bits);
+      const u = toUnsigned(v, bits);
+      const signed = u >= (1n << BigInt(bits - 1)) ? u - mod : u;
+      const binStr = u.toString(2).padStart(bits, '0');
+      const hexStr = u.toString(16).toUpperCase().padStart(Math.ceil(bits / 4), '0');
+      twosEl.innerHTML =
+        '<div class="row">' + bits + ' 位二进制（补码）：<code>' + binStr + '</code></div>' +
+        '<div class="row">' + bits + ' 位十六进制：<code>0x' + hexStr + '</code></div>' +
+        '<div class="row">按 ' + bits + ' 位有符号解读：<code>' + signed + '</code></div>' +
+        '<div class="row">按 ' + bits + ' 位无符号解读：<code>' + u + '</code></div>';
+      updating = false;
+    }
+
+    decI.addEventListener('input', () => convert('dec', decI.value));
+    binI.addEventListener('input', () => convert('bin', binI.value));
+    octI.addEventListener('input', () => convert('oct', octI.value));
+    hexI.addEventListener('input', () => convert('hex', hexI.value));
+    bitsSel.addEventListener('change', () => {
+      // 以当前十进制值重新渲染补码
+      if (decI.value) convert('dec', decI.value);
+    });
+
+    // ===== 输入框自动增高（内容变长时撑高，防回车换行） =====
+    function autoGrow(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+
+    [decI, binI, octI, hexI].forEach(el => {
+      el.addEventListener('input', () => {
+        if (el.value.includes('\n')) el.value = el.value.replace(/\n/g, '');
+        autoGrow(el);
+      });
+      autoGrow(el);
+    });
+
+    // ===== 位运算 =====
+    const opA = document.getElementById('opA');
+    const opB = document.getElementById('opB');
+    const opBaseA = document.getElementById('opBaseA');
+    const opBaseB = document.getElementById('opBaseB');
+    const opShift = document.getElementById('opShift');
+
+    function parseOp(str, prefix) {
+      str = toHalfWidth(str).trim().replace(/_/g, '');
+      if (!str) return null;
+      let body = str;
+      if (prefix && str.startsWith(prefix)) body = str.slice(prefix.length);
+      else if (!prefix) body = str.replace(/^0x/i, '').replace(/^0b/i, '').replace(/^0o/i, '');
+      const neg = body.startsWith('-');
+      const clean = (neg ? body.slice(1) : body).replace(/^0+/, '') || '0';
+      const base = prefix === '0b' ? 2 : prefix === '0o' ? 8 : prefix === '0x' ? 16 : 10;
+      const digits = '0123456789abcdefghijklmnopqrstuvwxyz'.slice(0, base);
+      for (const ch of clean.toLowerCase()) {
+        if (!digits.includes(ch)) return 'invalid';
+      }
+      if (clean === '0') return 0n;
+      let v = 0n;
+      const b = BigInt(base);
+      for (const ch of clean.toLowerCase()) v = v * b + BigInt(digits.indexOf(ch));
+      return neg ? -v : v;
+    }
+
+    function updateOps() {
+      const bits = parseInt(bitsSel.value, 10);
+      const mod = 1n << BigInt(bits);
+      const a = parseOp(opA.value, opBaseA.value);
+      const b = parseOp(opB.value, opBaseB.value);
+      const sh = parseInt(opShift.value, 10) || 0;
+      const out = (id, val) => {
+        const el = document.getElementById(id);
+        el.textContent = val === null ? '—' : '0x' + toUnsigned(val, bits).toString(16).toUpperCase().padStart(Math.ceil(bits / 4), '0') +
+          '  =  ' + toUnsigned(val, bits).toString(2).padStart(bits, '0') + 'b  =  ' + Number(toUnsigned(val, bits)).toString(10);
+      };
+      if (a === null || b === null || a === 'invalid' || b === 'invalid') {
+        ['rAnd', 'rOr', 'rXor', 'rNot', 'rLsh', 'rRsh'].forEach(id => out(id, null));
+        return;
+      }
+      const ua = toUnsigned(a, bits);
+      const ub = toUnsigned(b, bits);
+      out('rAnd', ua & ub);
+      out('rOr', ua | ub);
+      out('rXor', ua ^ ub);
+      out('rNot', (~ua) & (mod - 1n));
+      out('rLsh', sh >= bits ? 0n : (ua << BigInt(sh)) & (mod - 1n));
+      out('rRsh', (ua >> BigInt(Math.min(sh, bits))) & (mod - 1n));
+    }
+
+    [opA, opB, opBaseA, opBaseB, opShift].forEach(el => el.addEventListener('input', updateOps));
+    updateOps();
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

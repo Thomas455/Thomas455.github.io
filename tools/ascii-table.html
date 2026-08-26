@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASCII / 字符编码查看 · Thomas455</title>
+  <meta name="description" content="ASCII 码表、字符编码查询：十进制/十六进制/二进制/Unicode/UTF-8 字节。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .tool-card {
+      padding: 24px 28px;
+      margin-bottom: 24px;
+    }
+
+    .tool-card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 14px;
+    }
+
+    /* 查询区 */
+    .query-row {
+      display: flex;
+      gap: 10px;
+      max-width: 520px;
+      margin-bottom: 18px;
+    }
+
+    .query-row input {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .query-row input:focus {
+      border-color: var(--accent);
+    }
+
+    .char-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .char-table th, .char-table td {
+      padding: 6px 10px;
+      text-align: left;
+      border-bottom: 1px dashed rgba(31, 35, 40, 0.08);
+    }
+
+    .char-table th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .char-table td code {
+      font-family: Consolas, Monaco, monospace;
+    }
+
+    .char-show {
+      font-size: 1.3rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .char-empty {
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    /* ASCII 网格 */
+    .grid-scroll {
+      overflow-x: auto;
+    }
+
+    .ascii-grid {
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      width: 100%;
+    }
+
+    .ascii-grid th, .ascii-grid td {
+      border: 1px solid rgba(31, 35, 40, 0.08);
+      padding: 3px 4px;
+      text-align: center;
+      min-width: 34px;
+      height: 28px;
+    }
+
+    .ascii-grid th {
+      background: rgba(37, 99, 235, 0.06);
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .ascii-grid td.rowh {
+      background: rgba(37, 99, 235, 0.06);
+      color: var(--muted);
+      font-weight: 600;
+      font-family: Consolas, Monaco, monospace;
+    }
+
+    .ascii-grid td.ch {
+      cursor: pointer;
+      font-family: Consolas, Monaco, monospace;
+      transition: background 0.15s;
+    }
+
+    .ascii-grid td.ch:hover {
+      background: rgba(37, 99, 235, 0.15);
+    }
+
+    .ascii-grid td.ctrl {
+      font-size: 0.6rem;
+      color: #b45309;
+    }
+
+    .ascii-grid td.print {
+      font-size: 1rem;
+    }
+
+    details {
+      margin-top: 14px;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.88rem;
+      user-select: none;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>ASCII / 字符<span class="accent">编码查看</span></h1>
+      <p class="muted">查询字符的十进制/十六进制/二进制/Unicode/UTF-8 编码，ASCII 全表速查。</p>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>字符查询</h3>
+      <div class="query-row">
+        <input type="text" id="charInput" placeholder="输入字符或字符串，如 A、中、\n" autocomplete="off">
+      </div>
+      <div id="charResult"></div>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>ASCII 码表（0 - 127）</h3>
+      <div class="hint">点击任意格子可复制该字符的编码信息；黄色小字为控制字符。</div>
+      <div class="grid-scroll" id="asciiTable"></div>
+      <details>
+        <summary>扩展表 128 - 255（Latin-1）</summary>
+        <div class="grid-scroll" id="extTable" style="margin-top:10px"></div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const charInput = document.getElementById('charInput');
+    const charResult = document.getElementById('charResult');
+
+    // ===== 控制字符名称 =====
+    const CTRL = {
+      0: 'NUL', 1: 'SOH', 2: 'STX', 3: 'ETX', 4: 'EOT', 5: 'ENQ', 6: 'ACK', 7: 'BEL',
+      8: 'BS', 9: 'TAB', 10: 'LF', 11: 'VT', 12: 'FF', 13: 'CR', 14: 'SO', 15: 'SI',
+      16: 'DLE', 17: 'DC1', 18: 'DC2', 19: 'DC3', 20: 'DC4', 21: 'NAK', 22: 'SYN', 23: 'ETB',
+      24: 'CAN', 25: 'EM', 26: 'SUB', 27: 'ESC', 28: 'FS', 29: 'GS', 30: 'RS', 31: 'US',
+      127: 'DEL'
+    };
+
+    // ===== 字符 → 编码信息 =====
+    function charInfo(ch) {
+      const cp = ch.codePointAt(0);
+      const hex = cp.toString(16).toUpperCase().padStart(2, '0');
+      const bin = cp.toString(2).padStart(8, '0');
+      const utf8 = new TextEncoder().encode(ch);
+      const utf8Hex = [...utf8].map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      let name = '';
+      if (cp === 32) name = '空格 Space';
+      else if (CTRL[cp]) name = '控制字符 ' + CTRL[cp];
+      else if (cp >= 0x20 && cp <= 0x7e) name = '可打印 ASCII';
+      else if (cp < 0x80) name = '控制字符';
+      else name = 'Unicode 字符';
+      return { cp, hex, bin, utf8Hex, name };
+    }
+
+    function renderChars(str) {
+      const chars = Array.from(str); // 正确处理代理对（emoji 等）
+      if (!chars.length) {
+        charResult.innerHTML = '<div class="char-empty">输入字符开始查询（支持中文、emoji 等多字节字符）</div>';
+        return;
+      }
+      const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const rows = chars.map(ch => {
+        const info = charInfo(ch);
+        const show = ch === ' ' ? '␣（空格）' : ch;
+        return '<tr>' +
+          '<td class="char-show">' + esc(show) + '</td>' +
+          '<td>' + esc(info.name) + '</td>' +
+          '<td><code>' + info.cp + '</code></td>' +
+          '<td><code>0x' + info.hex + '</code></td>' +
+          '<td><code>' + info.bin + '</code></td>' +
+          '<td><code>U+' + info.cp.toString(16).toUpperCase().padStart(4, '0') + '</code></td>' +
+          '<td><code>' + info.utf8Hex + '</code></td>' +
+        '</tr>';
+      }).join('');
+      charResult.innerHTML =
+        '<table class="char-table">' +
+          '<tr><th>字符</th><th>类型</th><th>十进制</th><th>十六进制</th><th>二进制</th><th>Unicode</th><th>UTF-8 字节</th></tr>' +
+          rows +
+        '</table>';
+    }
+
+    charInput.addEventListener('input', () => renderChars(charInput.value));
+
+    // ===== ASCII 网格渲染 =====
+    function buildGrid(start, end) {
+      const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      let html = '<table class="ascii-grid"><tr><th></th>';
+      for (let col = 0; col < 16; col++) html += '<th>' + col.toString(16).toUpperCase() + '</th>';
+      html += '</tr>';
+      for (let row = start; row <= end; row += 16) {
+        html += '<tr><td class="rowh">' + (row / 16).toString(16).toUpperCase() + 'x</td>';
+        for (let col = 0; col < 16; col++) {
+          const cp = row + col;
+          if (cp > end) { html += '<td></td>'; continue; }
+          let cls = 'ch', content;
+          if (CTRL[cp]) {
+            cls += ' ctrl';
+            content = esc(CTRL[cp]);
+          } else if (cp === 32) {
+            cls += ' ctrl';
+            content = 'SP';
+          } else {
+            cls += ' print';
+            content = esc(String.fromCodePoint(cp));
+          }
+          const bin = cp.toString(2).padStart(8, '0');
+          const hex = cp.toString(16).toUpperCase().padStart(2, '0');
+          const info = 'Dec ' + cp + ' / 0x' + hex + ' / ' + bin + 'b' + (CTRL[cp] ? ' / ' + CTRL[cp] : '');
+          html += '<td class="' + cls + '" title="' + info + '" data-cp="' + cp + '">' + content + '</td>';
+        }
+        html += '</tr>';
+      }
+      html += '</table>';
+      return html;
+    }
+
+    document.getElementById('asciiTable').innerHTML = buildGrid(0, 127);
+    document.getElementById('extTable').innerHTML = buildGrid(128, 255);
+
+    // 点击格子 → 填入查询框并查询
+    document.addEventListener('click', e => {
+      const td = e.target.closest('td.ch');
+      if (!td) return;
+      const cp = parseInt(td.dataset.cp, 10);
+      if (cp >= 0x20 && cp <= 0x7e) {
+        charInput.value = String.fromCodePoint(cp);
+        renderChars(charInput.value);
+        charInput.focus();
+      } else if (cp >= 0xa0 && cp <= 0xff) {
+        charInput.value = String.fromCodePoint(cp);
+        renderChars(charInput.value);
+        charInput.focus();
+      } else {
+        // 控制字符：填入转义说明
+        charResult.innerHTML = '<div class="char-empty">' + CTRL[cp] + '（0x' + cp.toString(16).toUpperCase().padStart(2, '0') + '）为控制字符，无法直接输入显示，其编码信息见上方格子悬浮提示</div>';
+      }
+    });
+
+    renderChars('');
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

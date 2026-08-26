@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>二维码工具 · Thomas455</title>
+  <meta name="description" content="二维码生成与扫描：生成二维码、调用摄像头扫码，结果可复制、打开链接。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .tool-card {
+      padding: 24px 28px;
+      margin-bottom: 24px;
+    }
+
+    .tool-card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 14px;
+    }
+
+    /* 生成区 */
+    .gen-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .gen-row textarea {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      resize: vertical;
+      min-height: 44px;
+    }
+
+    .gen-row textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .param-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .param label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .param select,
+    .param input[type="color"] {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 0.85rem;
+    }
+
+    .param input[type="color"] {
+      width: 64px;
+      height: 32px;
+      padding: 2px;
+      cursor: pointer;
+    }
+
+    .qr-out {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .qr-box {
+      padding: 14px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 4px 16px rgba(31, 35, 40, 0.06);
+    }
+
+    .qr-box canvas {
+      display: block;
+    }
+
+    .qr-side {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .qr-side .muted {
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+
+    /* 扫描区 */
+    .scan-area {
+      text-align: center;
+    }
+
+    .scan-video-wrap {
+      position: relative;
+      display: inline-block;
+      margin: 0 auto 12px;
+    }
+
+    .scan-video-wrap video {
+      width: 100%;
+      max-width: 420px;
+      max-height: 320px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: #111;
+      display: block;
+    }
+
+    .scan-mask {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border: 2px solid rgba(37, 99, 235, 0.5);
+      border-radius: 12px;
+    }
+
+    .scan-status {
+      color: var(--muted);
+      font-size: 0.88rem;
+      min-height: 20px;
+      margin-bottom: 12px;
+    }
+
+    .scan-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .cam-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .cam-row select {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 0.85rem;
+      max-width: 260px;
+    }
+
+    .result-box {
+      margin-top: 10px;
+      text-align: left;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: rgba(37, 99, 235, 0.06);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+
+    .result-box .r-label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .result-box .r-text {
+      font-size: 0.95rem;
+      word-break: break-all;
+      margin-bottom: 10px;
+      font-family: Consolas, Monaco, monospace;
+    }
+
+    .hidden { display: none; }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>二维码<span class="accent">工具</span></h1>
+      <p class="muted">生成二维码、摄像头扫码，结果支持复制与打开链接。</p>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>二维码生成</h3>
+      <div class="gen-row">
+        <textarea id="qrText" placeholder="输入文本或链接，例如 https://thomas455.github.io" rows="2"></textarea>
+        <button class="btn" id="genBtn">生成</button>
+      </div>
+      <div class="param-row">
+        <div class="param">
+          <label>容错级别</label>
+          <select id="qrLevel">
+            <option value="L">L（可恢复 7%）</option>
+            <option value="M">M（可恢复 15%）</option>
+            <option value="Q">Q（可恢复 25%）</option>
+            <option value="H" selected>H（可恢复 30%）</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>规格（版本号）</label>
+          <select id="qrVer"></select>
+        </div>
+        <div class="param">
+          <label>尺寸（像素）</label>
+          <select id="qrSize">
+            <option value="128">128</option>
+            <option value="256" selected>256</option>
+            <option value="512">512</option>
+            <option value="1024">1024</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>前景色</label>
+          <input type="color" id="qrFg" value="#000000">
+        </div>
+        <div class="param">
+          <label>背景色</label>
+          <input type="color" id="qrBg" value="#ffffff">
+        </div>
+      </div>
+      <div class="qr-out">
+        <div class="qr-box" id="qrBox"></div>
+        <div class="qr-side">
+          <p class="muted" id="qrHint">输入内容后点击「生成」。</p>
+          <button class="btn btn-outline hidden" id="dlBtn">下载 PNG</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>摄像头扫码</h3>
+      <div class="scan-area">
+        <div class="scan-video-wrap hidden" id="scanWrap">
+          <video id="scanVideo" playsinline muted></video>
+        </div>
+        <div class="scan-status" id="scanStatus">点击「开始扫描」调用摄像头（需要授权）。</div>
+        <div class="scan-actions">
+          <button class="btn" id="scanBtn">开始扫描</button>
+          <button class="btn btn-outline hidden" id="stopBtn">停止</button>
+        </div>
+        <div class="cam-row hidden" id="camRow">
+          <label for="camSelect">切换摄像头：</label>
+          <select id="camSelect"></select>
+        </div>
+        <div class="result-box hidden" id="resultBox">
+          <div class="r-label">识别结果</div>
+          <div class="r-text" id="resultText"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-outline sm" id="copyBtn">复制</button>
+            <button class="btn btn-outline sm hidden" id="openBtn">打开链接</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <!-- 本地库：qrcodejs（生成）+ jsQR（解码） -->
+  <script src="../assets/js/qrcode.min.js"></script>
+  <script src="../assets/js/jsQR.js"></script>
+
+  <script>
+    // ===== 生成 =====
+    const qrText = document.getElementById('qrText');
+    const genBtn = document.getElementById('genBtn');
+    const qrBox = document.getElementById('qrBox');
+    const qrHint = document.getElementById('qrHint');
+    const dlBtn = document.getElementById('dlBtn');
+    const qrLevel = document.getElementById('qrLevel');
+    const qrVer = document.getElementById('qrVer');
+    const qrSize = document.getElementById('qrSize');
+    const qrFg = document.getElementById('qrFg');
+    const qrBg = document.getElementById('qrBg');
+    let qrObj = null;
+
+    // 规格版本 1-10 选项
+    for (let v = 1; v <= 10; v++) {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v + '（' + (17 + 4 * v) + '×' + (17 + 4 * v) + ' 模块）';
+      qrVer.appendChild(o);
+    }
+    // 默认"自动"
+    const autoOpt = document.createElement('option');
+    autoOpt.value = '0';
+    autoOpt.textContent = '自动';
+    autoOpt.selected = true;
+    qrVer.insertBefore(autoOpt, qrVer.firstChild);
+
+    const LEVEL_MAP = {
+      L: QRCode.CorrectLevel.L,
+      M: QRCode.CorrectLevel.M,
+      Q: QRCode.CorrectLevel.Q,
+      H: QRCode.CorrectLevel.H
+    };
+
+    function generate() {
+      const text = qrText.value.trim();
+      if (!text) { qrHint.textContent = '请输入内容后再生成。'; return; }
+      const size = parseInt(qrSize.value, 10);
+      const typeNumber = parseInt(qrVer.value, 10);
+      qrBox.innerHTML = '';
+      qrObj = new QRCode(qrBox, {
+        text: text,
+        width: size,
+        height: size,
+        colorDark: qrFg.value,
+        colorLight: qrBg.value,
+        correctLevel: LEVEL_MAP[qrLevel.value],
+        typeNumber: typeNumber
+      });
+      qrHint.textContent = '内容长度：' + text.length + ' 字符 · 容错 ' + qrLevel.value +
+        ' · 规格 ' + (typeNumber === 0 ? '自动' : '版本 ' + typeNumber) +
+        ' · ' + size + 'px';
+      dlBtn.classList.remove('hidden');
+    }
+
+    genBtn.addEventListener('click', generate);
+    qrText.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generate(); } });
+    [qrLevel, qrVer, qrSize, qrFg, qrBg].forEach(el => el.addEventListener('change', () => {
+      if (qrText.value.trim()) generate();
+    }));
+
+    dlBtn.addEventListener('click', () => {
+      const canvas = qrBox.querySelector('canvas');
+      if (!canvas) return;
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'qrcode.png';
+      a.click();
+    });
+
+    // ===== 扫描 =====
+    const scanBtn = document.getElementById('scanBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const scanWrap = document.getElementById('scanWrap');
+    const scanVideo = document.getElementById('scanVideo');
+    const scanStatus = document.getElementById('scanStatus');
+    const resultBox = document.getElementById('resultBox');
+    const resultText = document.getElementById('resultText');
+    const copyBtn = document.getElementById('copyBtn');
+    const openBtn = document.getElementById('openBtn');
+    const camRow = document.getElementById('camRow');
+    const camSelect = document.getElementById('camSelect');
+
+    let stream = null;
+    let scanTimer = null;
+    let scanning = false;
+    let currentDeviceId = null;
+
+    const decCanvas = document.createElement('canvas');
+    const decCtx = decCanvas.getContext('2d', { willReadFrequently: true });
+
+    // 枚举摄像头设备列表
+    async function loadCameraList() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cams = devices.filter(d => d.kind === 'videoinput');
+        if (!cams.length) return;
+        const prev = camSelect.value;
+        camSelect.innerHTML = '';
+        cams.forEach((d, i) => {
+          const o = document.createElement('option');
+          o.value = d.deviceId;
+          o.textContent = d.label || ('摄像头 ' + (i + 1));
+          camSelect.appendChild(o);
+        });
+        camRow.classList.remove('hidden');
+        if (prev && [...camSelect.options].some(o => o.value === prev)) {
+          camSelect.value = prev;
+        } else if (currentDeviceId) {
+          camSelect.value = currentDeviceId;
+        }
+      } catch (e) { /* 枚举失败不阻塞 */ }
+    }
+
+    async function startScan(deviceId) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        scanStatus.textContent = '当前环境无法使用摄像头：需要 HTTPS 或 localhost 安全上下文（预览面板 / 双击打开的 file:// 页面均不可用）。请部署到 GitHub Pages 后使用，或在本机用 http://localhost 访问。';
+        return;
+      }
+      try {
+        const videoConstraints = deviceId
+          ? { deviceId: { exact: deviceId } }
+          : { facingMode: 'environment' };
+        stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+        currentDeviceId = stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId;
+        scanVideo.srcObject = stream;
+        scanWrap.classList.remove('hidden');
+        resultBox.classList.add('hidden');
+        scanBtn.classList.add('hidden');
+        stopBtn.classList.remove('hidden');
+        await scanVideo.play();
+        scanning = true;
+        scanStatus.textContent = '扫描中…请将二维码对准摄像头';
+        scanTimer = setInterval(scanFrame, 150);
+        loadCameraList();
+      } catch (err) {
+        let msg;
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          msg = '摄像头权限被拒绝或 iframe 未授权（预览面板常见）。请把页面在新标签页直接打开，或部署后用 HTTPS 访问。';
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          msg = '未检测到摄像头设备';
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          msg = '摄像头被其他程序占用，请关闭占用程序后重试';
+        } else {
+          msg = err.message || '未知错误';
+        }
+        scanStatus.textContent = '无法访问摄像头：' + msg;
+      }
+    }
+
+    function scanFrame() {
+      if (!scanning || scanVideo.readyState < 2) return;
+      const w = scanVideo.videoWidth, h = scanVideo.videoHeight;
+      if (!w || !h) return;
+      decCanvas.width = w;
+      decCanvas.height = h;
+      decCtx.drawImage(scanVideo, 0, 0, w, h);
+      const img = decCtx.getImageData(0, 0, w, h);
+      const code = window.jsQR ? jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' }) : null;
+      if (code && code.data) {
+        stopScan();
+        showResult(code.data);
+      }
+    }
+
+    function stopScan() {
+      scanning = false;
+      clearInterval(scanTimer);
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      scanVideo.srcObject = null;
+      scanWrap.classList.add('hidden');
+      scanBtn.classList.remove('hidden');
+      stopBtn.classList.add('hidden');
+      scanStatus.textContent = scanning ? '' : '扫描已停止，可重新开始。';
+    }
+
+    function showResult(data) {
+      resultText.textContent = data;
+      resultBox.classList.remove('hidden');
+      const isUrl = /^https?:\/\//i.test(data);
+      openBtn.classList.toggle('hidden', !isUrl);
+      scanStatus.textContent = '识别成功！';
+    }
+
+    scanBtn.addEventListener('click', () => startScan(currentDeviceId));
+    stopBtn.addEventListener('click', stopScan);
+
+    // 切换摄像头：扫描中直接切换并重启
+    camSelect.addEventListener('change', () => {
+      currentDeviceId = camSelect.value;
+      if (scanning) {
+        stopScan();
+        startScan(currentDeviceId);
+      }
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(resultText.textContent);
+        copyBtn.textContent = '已复制 ✓';
+        setTimeout(() => { copyBtn.textContent = '复制'; }, 1500);
+      } catch (e) {
+        copyBtn.textContent = '复制失败';
+      }
+    });
+
+    openBtn.addEventListener('click', () => {
+      const t = resultText.textContent;
+      if (/^https?:\/\//i.test(t)) window.open(t, '_blank');
+    });
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
