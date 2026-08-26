@@ -39,39 +39,81 @@
       margin-bottom: 6px;
     }
 
-    .app-col {
+    /* 统一大面板：三块内容合为一个矩形，上下撑满 */
+    .panel {
       flex: 1;
+      min-height: 0;
       display: flex;
-      flex-direction: column;
-      gap: 14px;
-      min-height: 0;
-      padding-bottom: 14px;
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(31, 35, 40, 0.06);
     }
 
-    .kb-card {
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .bottom-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      min-height: 0;
-    }
-
-    .bottom-grid .tool-card {
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .tool-card {
-      padding: 12px 16px;
-    }
-
-    .tool-card h3 {
+    .panel h3 {
       font-size: 0.95rem;
       margin-bottom: 8px;
+    }
+
+    .app-grid {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 20px;
+      align-items: start;
+      align-content: start;
+      width: 100%;
+      margin: 0;
+    }
+
+    .kb-section {
+      min-width: 0;
+    }
+
+    .kb-section .kb-wrap {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .kb-section .recent {
+      margin-top: 8px;
+    }
+
+    .side-col {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .side-section {
+      padding-top: 14px;
+      margin-top: 14px;
+      border-top: 1px dashed rgba(31, 35, 40, 0.12);
+    }
+
+    .side-section:first-child {
+      padding-top: 0;
+      margin-top: 0;
+      border-top: none;
+    }
+
+    .side-section h3 {
+      flex-shrink: 0;
+    }
+
+    .mouse-area {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .rx-box {
+      min-height: 60px;
     }
 
     .focus-hint {
@@ -206,38 +248,38 @@
     .mouse-area {
       border: 2px dashed rgba(37, 99, 235, 0.35);
       border-radius: 12px;
-      padding: 12px;
+      padding: 14px;
       text-align: center;
       background: rgba(37, 99, 235, 0.03);
     }
 
     .m-hint {
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       color: var(--muted);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .m-row {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       justify-content: center;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
     }
 
     .m-btn {
-      width: 76px;
-      padding: 8px 0;
+      width: 96px;
+      padding: 12px 0;
       border-radius: 10px;
       background: rgba(255, 255, 255, 0.6);
       border: 1px solid rgba(255, 255, 255, 0.8);
       color: var(--text);
-      font-size: 0.78rem;
+      font-size: 0.82rem;
       user-select: none;
       transition: all 0.08s;
     }
 
-    .m-btn b { font-size: 1.1rem; display: block; margin-top: 2px; }
+    .m-btn b { font-size: 1.2rem; display: block; margin-top: 3px; }
 
     .m-btn.used {
       background: rgba(37, 99, 235, 0.1);
@@ -302,63 +344,68 @@
     </nav>
   </header>
 
-  <main class="container" style="flex:1;display:flex;flex-direction:column;min-height:0">
-    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+  <main style="flex:1;display:flex;flex-direction:column;min-height:0;padding:0 24px;width:100%;box-sizing:border-box">
+    <a class="back-link" href="../tools.html" style="margin-left:0;align-self:flex-start">← 返回在线工具</a>
 
     <div class="hero-mini">
       <h1>键盘鼠标<span class="accent">检测</span></h1>
       <div class="focus-hint">⚠️ 先点击本页面任意空白处获得焦点，再按键盘/点鼠标开始测试（已拦截 F1/F5/侧键等浏览器默认动作）</div>
     </div>
 
-    <div class="app-col">
-      <section class="tool-card glass kb-card">
-        <h3>键盘测试</h3>
-        <div class="stuck-bar" id="stuckBar"></div>
-        <div class="kb-stats">
-          <span>总按键：<b id="kbTotal">0</b> 次</span>
-          <span>已触发键：<b id="kbDistinct">0</b> 个</span>
-          <span>卡键警告：红色闪烁</span>
-        </div>
-        <div class="kb-wrap">
-          <div class="kb-board">
-            <div class="kb-main" id="kbMain"></div>
-            <div class="kb-right">
-              <div class="kb-edit" id="kbEdit"></div>
-              <div class="kb-arrows" id="kbArrows"></div>
-              <div class="kb-numpad" id="kbNumpad"></div>
+    <div class="panel">
+      <div class="app-grid">
+        <section class="kb-section">
+          <h3>键盘测试</h3>
+          <div class="stuck-bar" id="stuckBar"></div>
+          <div class="kb-stats">
+            <span>总按键：<b id="kbTotal">0</b> 次</span>
+            <span>已触发键：<b id="kbDistinct">0</b> 个</span>
+            <span>卡键警告：红色闪烁</span>
+          </div>
+          <div class="kb-wrap">
+            <div class="kb-board">
+              <div class="kb-main" id="kbMain"></div>
+              <div class="kb-right">
+                <div class="kb-edit" id="kbEdit"></div>
+                <div class="kb-arrows" id="kbArrows"></div>
+                <div class="kb-numpad" id="kbNumpad"></div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="recent" id="recent"></div>
-      </section>
+          <div class="recent" id="recent"></div>
+        </section>
 
-      <div class="bottom-grid">
-        <section class="tool-card glass">
-          <h3>鼠标测试</h3>
-          <div class="mouse-area" id="mouseArea">
-            <div class="m-hint">点击（左/中/右/侧键）、滚轮、移动</div>
-            <div class="m-row">
-              <div class="m-btn" id="mbLeft">左键<b>0</b></div>
-              <div class="m-btn" id="mbMiddle">中键<b>0</b></div>
-              <div class="m-btn" id="mbRight">右键<b>0</b></div>
-              <div class="m-btn" id="mbSide1">侧键1<b>0</b></div>
-              <div class="m-btn" id="mbSide2">侧键2<b>0</b></div>
+        <div class="side-col">
+          <section class="side-section">
+            <h3>鼠标测试</h3>
+            <div class="mouse-area" id="mouseArea">
+              <div class="m-hint">需要将光标放入此区域点击（左/中/右键）；侧键任意位置有效；滚轮、移动同样在此区域内测试</div>
+              <div class="m-row">
+                <div class="m-btn" id="mbLeft">左键<b>0</b></div>
+                <div class="m-btn" id="mbMiddle">中键<b>0</b></div>
+                <div class="m-btn" id="mbRight">右键<b>0</b></div>
+              </div>
+              <div class="m-row">
+                <div class="m-btn" id="mbSide1">侧键1<b>0</b></div>
+                <div class="m-btn" id="mbSide2">侧键2<b>0</b></div>
+              </div>
+            <div class="m-line">滚轮：上 <b id="mwUp">0</b> · 下 <b id="mwDn">0</b></div>
+            <div class="m-line">移入 <b id="mMove">0</b> 次　位置：<b id="mPos">-</b></div>
+            <div class="m-line" style="font-size:0.7rem;color:#94a3b8" id="mEventLog">事件日志：—</div>
             </div>
-            <div class="m-line">滚轮：上 <b id="mwUp">0</b> 次 · 下 <b id="mwDn">0</b> 次　|　移入 <b id="mMove">0</b> 次　|　位置：<b id="mPos">-</b></div>
-          </div>
-        </section>
+          </section>
 
-        <section class="tool-card glass">
-          <h3>自定义 HID 设备（WebHID）</h3>
-          <p class="muted" style="font-size:0.78rem">
-            说明：<b style="color:var(--text)">标准键盘/鼠标属于浏览器保护设备，WebHID 无法读取</b>（本页用原生事件检测它们）。
-            此处可连接<b>其他自定义 HID 设备</b>查看设备信息和原始数据流。仅 Chrome/Edge，需 HTTPS 或 localhost。
-          </p>
-          <div id="hidWarn" class="warn" style="display:none"></div>
-          <button class="btn" id="hidBtn">连接 HID 设备</button>
-          <div id="hidInfo" style="font-size:0.82rem;color:var(--muted);margin-top:8px"></div>
-          <div class="rx-box" id="hidData">（连接后显示原始输入数据）</div>
-        </section>
+          <section class="side-section">
+            <h3>自定义 HID 设备（WebHID）</h3>
+            <p class="muted" style="font-size:0.76rem">
+              说明：<b style="color:var(--text)">标准键盘/鼠标属于浏览器保护设备，WebHID 无法读取</b>（本页用原生事件检测）。此处可连接自定义 HID 设备查看原始数据。仅 Chrome/Edge。
+            </p>
+            <div id="hidWarn" class="warn" style="display:none"></div>
+            <button class="btn" id="hidBtn">连接 HID 设备</button>
+            <div id="hidInfo" style="font-size:0.8rem;color:var(--muted);margin-top:6px"></div>
+            <div class="rx-box" id="hidData">（连接后显示原始输入数据）</div>
+          </section>
+        </div>
       </div>
     </div>
   </main>
@@ -426,7 +473,7 @@
       return code;
     }
 
-    const U = 36; // 单位键宽 px
+    const U = 44; // 初始单位键宽 px，渲染后由 resizeKeys 按可用空间自动放大
     const keyEls = {};
     const keyCounts = {};
 
@@ -436,6 +483,7 @@
         rowDiv.className = 'kb-row';
         row.forEach(([code, w]) => {
           const k = document.createElement('div');
+          k.dataset.w = w;
           if (code === 'NONE') {
             k.className = 'key key-none';
             k.style.width = w * U + 'px';
@@ -454,6 +502,32 @@
         container.appendChild(rowDiv);
       });
     }
+
+    // 键帽自动缩放：填满键盘分区可用宽高，不溢出
+    let currentU = U;
+    function resizeKeys() {
+      const kbSection = document.querySelector('.kb-section');
+      const panel = document.querySelector('.panel');
+      // 布局未完成时用窗口尺寸兜底估算
+      const w = kbSection ? kbSection.clientWidth : 0;
+      const h = panel ? panel.clientHeight : 0;
+      const availW = Math.max(300, w > 0 ? w - 30 : window.innerWidth - 48 - 40 - 360 - 20 - 30);
+      const availH = Math.max(300, h > 0 ? h - 110 : window.innerHeight - 56 - 50 - 70 - 40 - 20);
+      const gapsW = 14 * 5 + 3 * 5 + 16; // 主区14个间距 + 右侧3个间距 + 中间 gap
+      const uW = Math.floor((availW - gapsW) / 19);   // 19 个 1U 键宽（主区15 + 小键盘4）
+      const uH = Math.floor((availH - 9 * 5) / 10 - 5); // 右侧最高 10 行
+      currentU = Math.max(40, Math.min(uW, uH, 96));
+      document.querySelectorAll('.key').forEach(k => {
+        const kw = parseFloat(k.dataset.w);
+        k.style.width = Math.round(kw * currentU) + 'px';
+        k.style.height = Math.round(currentU) + 'px';
+        k.style.fontSize = Math.round(currentU * 0.248) + 'px';
+      });
+    }
+    // 等布局完成后再计算（双 rAF + setTimeout 兜底）
+    requestAnimationFrame(() => requestAnimationFrame(resizeKeys));
+    setTimeout(resizeKeys, 80);
+    window.addEventListener('resize', resizeKeys);
 
     renderKeys(document.getElementById('kbMain'), MAIN_KEYS);
     renderKeys(document.getElementById('kbEdit'), EDIT_KEYS);
@@ -507,7 +581,10 @@
         keyEls[code].classList.add('on', 'used'); // on=当前按下，used=曾经按下（浅蓝）
         keyCounts[code]++;
         kbTotal++;
-        recentList.unshift({ code: code, key: e.key });
+        // 纯修饰键单独按下不计入"最近按键"列表（但仍高亮和计数）
+        if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) {
+          recentList.unshift({ code: code, key: e.key });
+        }
         kbUpdate();
         // 卡键检测
         clearTimeout(pressedTimers[code]);
@@ -554,17 +631,44 @@
       side2: mEls.side2.querySelector('b')
     };
 
-    // 全局拦截鼠标侧键/中键默认行为（浏览器前进/后退、中键自动滚动）
-    window.addEventListener('mousedown', e => { if (e.button >= 2) e.preventDefault(); }, true);
+    // 全局拦截鼠标中键/侧键默认行为（浏览器前进/后退、中键自动滚动）
+    // 注意：不能用 pointerdown preventDefault（会阻止 mousedown 派发，导致测试收不到事件）
+    window.addEventListener('mousedown', e => {
+      if (e.button >= 2) e.preventDefault();
+      // 侧键计数改为全局：任何位置按侧键都记录
+      if (e.button === 3 || e.button === 4) {
+        const key = BTN_MAP[e.button];
+        if (key && mEls[key]) {
+          mCounts[key]++;
+          mNums[key].textContent = mCounts[key];
+          mEls[key].classList.add('on', 'used');
+        }
+      }
+    }, true);
+    window.addEventListener('mouseup', e => { if (e.button >= 2) e.preventDefault(); }, true);
     window.addEventListener('auxclick', e => { if (e.button >= 2) e.preventDefault(); }, true);
     window.addEventListener('contextmenu', e => e.preventDefault(), true);
 
+    // 调试日志：显示最近鼠标事件，用于排查侧键是否到达页面
+    function logMouseEvent(type, button) {
+      const el = document.getElementById('mEventLog');
+      if (!el) return;
+      const t = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+      el.textContent = '事件日志：' + type + ' button=' + button + ' @' + t + ' | ' + el.textContent.slice(9, 150);
+    }
+    window.addEventListener('mousedown', e => logMouseEvent('mousedown', e.button), true);
+    window.addEventListener('auxclick', e => logMouseEvent('auxclick', e.button), true);
+    window.addEventListener('mouseup', e => logMouseEvent('mouseup', e.button), true);
+
     mouseArea.addEventListener('mousedown', e => {
-      const key = BTN_MAP[e.button];
-      if (!key) return;
-      mCounts[key]++;
-      mNums[key].textContent = mCounts[key];
-      mEls[key].classList.add('on', 'used');
+      // 左右键在测试区内计数（侧键已由全局处理）
+      if (e.button <= 2) {
+        const key = BTN_MAP[e.button];
+        if (!key) return;
+        mCounts[key]++;
+        mNums[key].textContent = mCounts[key];
+        mEls[key].classList.add('on', 'used');
+      }
     });
 
     window.addEventListener('mouseup', e => {
@@ -622,6 +726,16 @@
         alert('HID 连接失败：' + (err && err.message ? err.message : err));
       }
     });
+
+    // ===== 移动端检测：仅手机弹出浏览器警告（iPad 可外接键鼠，不提示） =====
+    (function mobileCheck() {
+      const isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+      const ua = navigator.userAgent;
+      const isPhone = /Android|iPhone|iPod|Mobile|HarmonyOS/i.test(ua);
+      const isIpad = /Macintosh/i.test(ua) && isTouch; // iPadOS Safari 伪装成 Mac，需排除
+      if (!(isTouch && isPhone && !isIpad)) return;
+      alert('⚠️ 建议在电脑上使用\n\n检测到手机：本工具需要物理键盘和鼠标才能测试，触屏设备可能无法正常使用。');
+    })();
 
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
