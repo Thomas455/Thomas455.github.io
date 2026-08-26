@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STM32 串口调试 · Thomas455</title>
+  <meta name="description" content="基于 Web Serial API 的串口调试工具：连接、收发、HEX/ASCII、定时发送、日志保存。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .tool-card {
+      padding: 20px 24px;
+      margin-bottom: 18px;
+    }
+
+    .tool-card h3 {
+      font-size: 1rem;
+      margin-bottom: 12px;
+    }
+
+    .param-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .param label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .param select,
+    .param input[type="number"],
+    .param input[type="text"] {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 0.85rem;
+    }
+
+    .conn-status {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .conn-status .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 6px;
+      background: #94a3b8;
+    }
+
+    .conn-status .dot.on { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
+    .conn-status .dot.off { background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .toolbar label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      font-weight: 400;
+      color: var(--text);
+    }
+
+    .toolbar input[type="checkbox"] { accent-color: var(--accent); }
+
+    .toolbar .sep { opacity: 0.4; }
+
+    .rx-box {
+      height: 320px;
+      overflow-y: auto;
+      background: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .msg {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .msg.send { justify-content: flex-end; }
+
+    .msg .bubble {
+      max-width: 85%;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .msg.recv .bubble {
+      background: #ffffff;
+      border: 1px solid rgba(31, 35, 40, 0.08);
+      color: #0f172a;
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg.send .bubble {
+      background: var(--accent);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg .ts {
+      font-size: 0.68rem;
+      color: #94a3b8;
+      flex-shrink: 0;
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    .stats {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .send-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .send-row textarea {
+      flex: 1;
+      min-width: 0;
+      min-height: 64px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: Consolas, "Courier New", monospace;
+      outline: none;
+      resize: vertical;
+    }
+
+    .send-row textarea:focus { border-color: var(--accent); }
+
+    .send-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .send-actions label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      font-weight: 400;
+      color: var(--text);
+    }
+
+    .send-actions input[type="checkbox"] { accent-color: var(--accent); }
+    .send-actions input[type="number"] {
+      width: 70px;
+      padding: 5px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 0.82rem;
+    }
+
+    .btn.sm { padding: 6px 14px; font-size: 0.82rem; }
+
+    .quick-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .quick-row input[type="text"] {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 0.85rem;
+      width: 180px;
+    }
+
+    .quick-cmds {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .quick-cmd {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.08);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+      color: var(--accent);
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .quick-cmd:hover { background: rgba(37, 99, 235, 0.18); }
+    .quick-cmd .del { color: #dc2626; font-weight: 700; margin-left: 2px; }
+
+    .warn {
+      background: rgba(180, 83, 9, 0.08);
+      border: 1px solid rgba(180, 83, 9, 0.2);
+      color: #b45309;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>STM32 <span class="accent">串口调试</span></h1>
+      <p class="muted">基于 Web Serial API 的串口调试助手，无需安装驱动软件。<b>仅支持 Chrome / Edge 89+</b>。</p>
+    </section>
+
+    <div id="serialWarn" class="warn" style="display:none"></div>
+
+    <section class="tool-card glass">
+      <h3>串口连接</h3>
+      <div class="conn-status">
+        <span class="dot off" id="connDot"></span>
+        <span id="connText">未连接</span>
+      </div>
+      <div class="param-row">
+        <div class="param">
+          <label>波特率</label>
+          <select id="baudSel">
+            <option>1200</option><option>2400</option><option>4800</option>
+            <option selected>9600</option><option>19200</option><option>38400</option>
+            <option>57600</option><option>115200</option><option>230400</option>
+            <option>460800</option><option>921600</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>数据位</label>
+          <select id="dataBitsSel">
+            <option selected>8</option><option>7</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>停止位</label>
+          <select id="stopBitsSel">
+            <option selected>1</option><option>2</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>校验位</label>
+          <select id="paritySel">
+            <option value="none" selected>None</option>
+            <option value="even">Even</option>
+            <option value="odd">Odd</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>流控</label>
+          <select id="flowSel">
+            <option value="none" selected>None</option>
+            <option value="hardware">Hardware</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>自定义波特率</label>
+          <input type="number" id="baudCustom" placeholder="留空用上方选择">
+        </div>
+        <div class="param">
+          <button class="btn" id="connBtn">连接</button>
+          <button class="btn btn-outline" id="disconnBtn" style="display:none">断开</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>接收</h3>
+      <div class="toolbar">
+        <label><input type="checkbox" id="hexRx"> HEX 显示</label>
+        <label><input type="checkbox" id="tsRx" checked> 时间戳</label>
+        <label><input type="checkbox" id="autoScroll" checked> 自动滚动</label>
+        <span class="sep">|</span>
+        <button class="btn btn-outline sm" id="clearRxBtn">清空</button>
+        <button class="btn btn-outline sm" id="saveLogBtn">保存日志</button>
+      </div>
+      <div class="rx-box" id="rxBox"></div>
+      <div class="stats">接收：<b id="rxStats">0</b> 字节　发送：<b id="txStats">0</b> 字节</div>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>发送</h3>
+      <div class="send-row">
+        <textarea id="sendInput" placeholder="输入要发送的内容（ASCII 或 HEX，Shift+Enter 换行）"></textarea>
+        <button class="btn" id="sendBtn">发送</button>
+      </div>
+      <div class="send-actions">
+        <label><input type="checkbox" id="hexTx"> HEX 发送</label>
+        <label><input type="checkbox" id="appendCrlf" checked> 追加换行</label>
+        <select id="crlfSel" style="padding:5px 8px;border:1px solid rgba(255,255,255,0.8);border-radius:6px;background:rgba(255,255,255,0.6);color:var(--text);outline:none;font-size:0.82rem">
+          <option value="\r\n" selected>CRLF (\r\n)</option>
+          <option value="\n">LF (\n)</option>
+          <option value="\r">CR (\r)</option>
+          <option value="none">无</option>
+        </select>
+        <label><input type="checkbox" id="autoSend"> 定时发送</label>
+        <input type="number" id="autoInterval" value="1000" min="50"> ms
+      </div>
+      <div class="quick-row" style="margin-top:16px">
+        <span style="font-size:0.82rem;color:var(--muted)">预设指令：</span>
+        <div class="quick-cmds" id="presetCmds"></div>
+      </div>
+      <div class="quick-row">
+        <span style="font-size:0.82rem;color:var(--muted)">快捷指令：</span>
+        <input type="text" id="quickInput" placeholder="指令内容（按当前发送模式）">
+        <input type="text" id="quickDesc" placeholder="备注（可选，悬停显示）" style="width:130px">
+        <button class="btn btn-outline sm" id="quickAddBtn">添加</button>
+        <div class="quick-cmds" id="quickCmds"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const warnEl = document.getElementById('serialWarn');
+    const connBtn = document.getElementById('connBtn');
+    const disconnBtn = document.getElementById('disconnBtn');
+    const connDot = document.getElementById('connDot');
+    const connText = document.getElementById('connText');
+    const rxBox = document.getElementById('rxBox');
+    const hexRx = document.getElementById('hexRx');
+    const tsRx = document.getElementById('tsRx');
+    const autoScroll = document.getElementById('autoScroll');
+    const rxStats = document.getElementById('rxStats');
+    const txStats = document.getElementById('txStats');
+    const sendInput = document.getElementById('sendInput');
+    const hexTx = document.getElementById('hexTx');
+    const appendCrlf = document.getElementById('appendCrlf');
+    const crlfSel = document.getElementById('crlfSel');
+    const autoSend = document.getElementById('autoSend');
+    const autoInterval = document.getElementById('autoInterval');
+    const quickInput = document.getElementById('quickInput');
+    const quickCmds = document.getElementById('quickCmds');
+
+    if (!navigator.serial) {
+      // 检测浏览器与安全上下文，给出明确提示
+      const ua = navigator.userAgent;
+      let browser = '未知浏览器';
+      if (/Edg\//.test(ua)) browser = 'Microsoft Edge';
+      else if (/Chrome\//.test(ua)) browser = 'Google Chrome';
+      else if (/Firefox\//.test(ua)) browser = 'Mozilla Firefox';
+      else if (/Safari\//.test(ua)) browser = 'Apple Safari';
+      const secure = window.isSecureContext;
+      warnEl.style.display = '';
+      warnEl.innerHTML =
+        '<b>⚠️ 当前环境不支持串口功能（Web Serial）</b><br>' +
+        '检测到浏览器：<b>' + browser + '</b>；安全上下文（HTTPS/localhost）：' + (secure ? '<b>是</b>' : '<b>否</b>') + '<br>' +
+        '本工具仅支持 <b>Chrome / Edge 89+</b>。';
+      connBtn.disabled = true;
+    }
+
+    let port = null;
+    let reader = null;
+    let keepReading = false;
+    let autoTimer = null;
+    let rxCount = 0, txCount = 0;
+
+    // ===== 连接 =====
+    connBtn.addEventListener('click', async () => {
+      try {
+        port = await navigator.serial.requestPort();
+        const opts = {
+          baudRate: parseInt(document.getElementById('baudCustom').value, 10) || parseInt(document.getElementById('baudSel').value, 10),
+          dataBits: parseInt(document.getElementById('dataBitsSel').value, 10),
+          stopBits: parseInt(document.getElementById('stopBitsSel').value, 10),
+          parity: document.getElementById('paritySel').value,
+          flowControl: document.getElementById('flowSel').value
+        };
+        await port.open(opts);
+        connDot.className = 'dot on';
+        connText.textContent = '已连接 ' + (port.getInfo().usbVendorId != null ? '（USB 设备）' : '') + ' @ ' + opts.baudRate;
+        connBtn.style.display = 'none';
+        disconnBtn.style.display = '';
+        rxCount = 0; txCount = 0;
+        updateStats();
+        keepReading = true;
+        readLoop();
+        if (autoSend.checked) startAutoSend();
+      } catch (err) {
+        if (err && err.name === 'NotFoundError') return; // 用户取消选择
+        alert('连接失败：' + (err && err.message ? err.message : err));
+      }
+    });
+
+    disconnBtn.addEventListener('click', disconnect);
+
+    async function disconnect() {
+      keepReading = false;
+      if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+      if (reader) {
+        try { await reader.cancel(); } catch (e) {}
+        try { reader.releaseLock(); } catch (e) {}
+        reader = null;
+      }
+      if (port) {
+        try { await port.close(); } catch (e) {}
+        port = null;
+      }
+      connDot.className = 'dot off';
+      connText.textContent = '未连接';
+      connBtn.style.display = '';
+      disconnBtn.style.display = 'none';
+    }
+
+    window.addEventListener('beforeunload', () => {
+      if (port) { try { port.close(); } catch (e) {} }
+    });
+
+    // ===== 读取 =====
+    async function readLoop() {
+      while (keepReading && port && port.readable) {
+        reader = port.readable.getReader();
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value && value.length) {
+              queueRx(value);
+            }
+          }
+        } catch (e) {
+          // 连接断开等
+        } finally {
+          try { reader.releaseLock(); } catch (e) {}
+        }
+      }
+    }
+
+    // ===== 接收显示（对话气泡） =====
+    function timeStr() {
+      const d = new Date();
+      const p = n => String(n).padStart(2, '0');
+      return '[' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + '.' +
+        String(d.getMilliseconds()).padStart(3, '0') + ']';
+    }
+
+    const decoder = new TextDecoder();
+
+    // 接收消息按 120ms 窗口聚合，避免气泡刷屏
+    let rxBuf = [];
+    let rxTimer = null;
+
+    function queueRx(bytes) {
+      rxBuf.push(bytes);
+      if (!rxTimer) rxTimer = setTimeout(flushRx, 120);
+    }
+
+    function flushRx() {
+      rxTimer = null;
+      if (!rxBuf.length) return;
+      const all = [];
+      rxBuf.forEach(b => all.push(...b));
+      rxBuf = [];
+      rxCount += all.length;
+      updateStats();
+      addMsg(all, 'recv');
+    }
+
+    function addMsg(bytes, dir) {
+      let text;
+      if (hexRx.checked) {
+        text = Array.from(bytes).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      } else {
+        text = decoder.decode(new Uint8Array(bytes));
+      }
+      const row = document.createElement('div');
+      row.className = 'msg ' + dir;
+      const ts = document.createElement('span');
+      ts.className = 'ts';
+      ts.textContent = timeStr();
+      if (!tsRx.checked) ts.style.display = 'none';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      row.appendChild(bubble);
+      row.appendChild(ts);
+      rxBox.appendChild(row);
+      // 限制消息数量，防止卡死
+      while (rxBox.children.length > 1000) rxBox.removeChild(rxBox.firstChild);
+      if (autoScroll.checked) rxBox.scrollTop = rxBox.scrollHeight;
+    }
+
+    document.getElementById('clearRxBtn').addEventListener('click', () => { rxBox.innerHTML = ''; });
+
+    document.getElementById('saveLogBtn').addEventListener('click', () => {
+      const lines = [...rxBox.querySelectorAll('.msg')].map(m => {
+        const ts = m.querySelector('.ts').textContent;
+        const text = m.querySelector('.bubble').textContent;
+        const tag = m.classList.contains('send') ? 'TX' : 'RX';
+        return ts + ' [' + tag + '] ' + text;
+      });
+      if (!lines.length) return;
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'serial_log_' + new Date().toISOString().replace(/[:.]/g, '-') + '.txt';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    function updateStats() {
+      rxStats.textContent = rxCount;
+      txStats.textContent = txCount;
+    }
+
+    // ===== 发送 =====
+    function parseHex(str) {
+      const s = String(str).replace(/[\s,;:]+/g, '');
+      if (!s || s.length % 2 !== 0) return null;
+      const bytes = [];
+      for (let i = 0; i < s.length; i += 2) {
+        const b = parseInt(s.substr(i, 2), 16);
+        if (isNaN(b)) return null;
+        bytes.push(b);
+      }
+      return new Uint8Array(bytes);
+    }
+
+    async function doSend(content) {
+      if (!port) { alert('请先连接串口'); return; }
+      let data;
+      if (hexTx.checked) {
+        const parsed = parseHex(content);
+        if (!parsed) { alert('HEX 格式错误：需要偶数个十六进制字符（如 AA BB 0C）'); return; }
+        data = parsed;
+      } else {
+        const crlf = appendCrlf.checked ? crlfSel.value : '';
+        data = new TextEncoder().encode(content + (crlf === 'none' ? '' : crlf));
+      }
+      try {
+        const writer = port.writable.getWriter();
+        await writer.write(data);
+        writer.releaseLock();
+        txCount += data.length;
+        updateStats();
+        // 发送回显（右侧气泡）
+        addMsg(Array.from(data), 'send');
+      } catch (err) {
+        alert('发送失败：' + (err && err.message ? err.message : err));
+      }
+    }
+
+    document.getElementById('sendBtn').addEventListener('click', () => doSend(sendInput.value));
+    sendInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(sendInput.value); }
+    });
+
+    // 定时发送
+    function startAutoSend() {
+      if (autoTimer) clearInterval(autoTimer);
+      const ms = Math.max(50, parseInt(autoInterval.value, 10) || 1000);
+      autoTimer = setInterval(() => doSend(sendInput.value), ms);
+    }
+
+    autoSend.addEventListener('change', () => {
+      if (autoSend.checked) {
+        if (port) startAutoSend();
+      } else if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    });
+
+    // ===== 内置预设指令 =====
+    const PRESETS = [
+      { name: 'AT', content: 'AT', mode: 'ascii', desc: 'AT 指令测试，模组返回 OK 表示通信正常' },
+      { name: 'AT+GMR', content: 'AT+GMR', mode: 'ascii', desc: '查询模组固件版本' },
+      { name: 'AT+RST', content: 'AT+RST', mode: 'ascii', desc: '重启 WiFi 模组' },
+      { name: 'AT+CWMODE=1', content: 'AT+CWMODE=1', mode: 'ascii', desc: '设置 WiFi 为 Station（终端）模式' },
+      { name: 'help', content: 'help', mode: 'ascii', desc: '请求命令帮助/命令列表' },
+      { name: 'test', content: 'test', mode: 'ascii', desc: '发送测试字符串' },
+      { name: 'AA 55', content: 'AA 55', mode: 'hex', desc: '常见帧头/握手字节' },
+      { name: '00 00', content: '00 00', mode: 'hex', desc: '两个 0x00 字节' },
+      { name: 'FF FF', content: 'FF FF', mode: 'hex', desc: '两个 0xFF 字节' },
+      { name: 'Modbus 读保持', content: '01 03 00 00 00 01 84 0A', mode: 'hex', desc: 'Modbus RTU：从站1 读保持寄存器 1 个（功能码 03）' }
+    ];
+
+    const presetCmds = document.getElementById('presetCmds');
+    presetCmds.innerHTML = '';
+    PRESETS.forEach(p => {
+      const btn = document.createElement('span');
+      btn.className = 'quick-cmd';
+      btn.title = p.content + ' —— ' + p.desc;
+      btn.textContent = p.name;
+      btn.addEventListener('click', () => {
+        // 预设指令自动切到对应发送模式
+        hexTx.checked = (p.mode === 'hex');
+        doSend(p.content);
+      });
+      presetCmds.appendChild(btn);
+    });
+
+    // ===== 快捷指令（localStorage） =====
+    const QUICK_KEY = 'serial_quick_cmds';
+    let quickCmdsList = [];
+    try { quickCmdsList = JSON.parse(localStorage.getItem(QUICK_KEY)) || []; } catch (e) {}
+
+    function renderQuickCmds() {
+      quickCmds.innerHTML = '';
+      quickCmdsList.forEach((item, i) => {
+        const btn = document.createElement('span');
+        btn.className = 'quick-cmd';
+        btn.title = item.content + (item.desc ? ' —— ' + item.desc : '');
+        btn.innerHTML = '<span>' + esc(item.name) + '</span><span class="del">×</span>';
+        btn.addEventListener('click', e => {
+          if (e.target.classList.contains('del')) {
+            quickCmdsList.splice(i, 1);
+            localStorage.setItem(QUICK_KEY, JSON.stringify(quickCmdsList));
+            renderQuickCmds();
+          } else {
+            doSend(item.content);
+          }
+        });
+        quickCmds.appendChild(btn);
+      });
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    document.getElementById('quickAddBtn').addEventListener('click', () => {
+      const content = quickInput.value.trim();
+      if (!content) return;
+      const desc = document.getElementById('quickDesc').value.trim();
+      const name = content.length > 12 ? content.slice(0, 12) + '…' : content;
+      quickCmdsList.push({ name: name, content: content, desc: desc });
+      quickCmdsList = quickCmdsList.slice(-20);
+      localStorage.setItem(QUICK_KEY, JSON.stringify(quickCmdsList));
+      quickInput.value = '';
+      document.getElementById('quickDesc').value = '';
+      renderQuickCmds();
+    });
+
+    renderQuickCmds();
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

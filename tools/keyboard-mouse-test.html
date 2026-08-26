@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>键盘鼠标检测 · Thomas455</title>
+  <meta name="description" content="检测键盘/鼠标按键是否正常触发：虚拟键盘高亮、鼠标按键滚轮测试、自定义 HID 设备查看。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    /* 单屏布局：禁止页面滚动 */
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hero-mini {
+      text-align: center;
+      padding: 6px 0 10px;
+    }
+
+    .hero-mini h1 {
+      font-size: 1.3rem;
+      margin-bottom: 6px;
+    }
+
+    .app-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 0;
+      padding-bottom: 14px;
+    }
+
+    .kb-card {
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .bottom-grid .tool-card {
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .tool-card {
+      padding: 12px 16px;
+    }
+
+    .tool-card h3 {
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+
+    .focus-hint {
+      text-align: center;
+      color: #b45309;
+      background: rgba(180, 83, 9, 0.08);
+      border: 1px solid rgba(180, 83, 9, 0.2);
+      border-radius: 10px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+    }
+
+    /* 键盘布局：参考 mchose 测试页风格，键帽单行文字、统一尺寸 */
+    .kb-wrap {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 4px;
+      overflow-x: auto;
+      box-shadow: 0 4px 20px rgba(31, 35, 40, 0.05);
+    }
+
+    .kb-board {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .kb-main, .kb-right {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .kb-row {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .kb-right .kb-row {
+      justify-content: flex-start;
+    }
+
+    .key {
+      width: 42px;
+      height: 42px;
+      flex-shrink: 0;
+      border-radius: 7px;
+      background: #ffffff;
+      border: 1px solid #d6dbe3;
+      color: #1f2937;
+      font-size: 0.68rem;
+      font-family: Consolas, "Courier New", monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 2px rgba(31, 35, 40, 0.08);
+      user-select: none;
+      transition: background 0.1s, box-shadow 0.1s, transform 0.1s, border-color 0.1s;
+      box-sizing: border-box;
+      white-space: nowrap;
+      overflow: hidden;
+      line-height: 1;
+    }
+
+    .key-none {
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .key.used {
+      background: #e8efff;
+      border-color: #b9cdf5;
+    }
+
+    .key.on {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 3px 0 #1e40af;
+      transform: translateY(-1px);
+    }
+
+    .key.stuck {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: #ffffff;
+      animation: blink 0.8s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0.55; }
+    }
+
+    .stuck-bar {
+      font-size: 0.8rem;
+      color: #dc2626;
+      min-height: 16px;
+    }
+
+    .kb-stats {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .kb-stats b { color: var(--text); }
+
+    .recent {
+      font-size: 0.82rem;
+      color: var(--muted);
+      min-height: 20px;
+    }
+
+    .recent code {
+      font-family: Consolas, monospace;
+      background: rgba(37, 99, 235, 0.08);
+      padding: 1px 8px;
+      border-radius: 6px;
+      margin-right: 6px;
+      color: var(--text);
+    }
+
+    /* 鼠标测试 */
+    .mouse-area {
+      border: 2px dashed rgba(37, 99, 235, 0.35);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      background: rgba(37, 99, 235, 0.03);
+    }
+
+    .m-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .m-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .m-btn {
+      width: 76px;
+      padding: 8px 0;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      color: var(--text);
+      font-size: 0.78rem;
+      user-select: none;
+      transition: all 0.08s;
+    }
+
+    .m-btn b { font-size: 1.1rem; display: block; margin-top: 2px; }
+
+    .m-btn.used {
+      background: rgba(37, 99, 235, 0.1);
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+
+    .m-btn.on {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .m-btn.on b { color: #fff; }
+
+    .m-line {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .m-line b { color: var(--text); font-family: Consolas, monospace; }
+
+    .warn {
+      background: rgba(180, 83, 9, 0.08);
+      border: 1px solid rgba(180, 83, 9, 0.2);
+      color: #b45309;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+
+    .rx-box {
+      height: 84px;
+      overflow-y: auto;
+      background: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #0f172a;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container" style="flex:1;display:flex;flex-direction:column;min-height:0">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <div class="hero-mini">
+      <h1>键盘鼠标<span class="accent">检测</span></h1>
+      <div class="focus-hint">⚠️ 先点击本页面任意空白处获得焦点，再按键盘/点鼠标开始测试（已拦截 F1/F5/侧键等浏览器默认动作）</div>
+    </div>
+
+    <div class="app-col">
+      <section class="tool-card glass kb-card">
+        <h3>键盘测试</h3>
+        <div class="stuck-bar" id="stuckBar"></div>
+        <div class="kb-stats">
+          <span>总按键：<b id="kbTotal">0</b> 次</span>
+          <span>已触发键：<b id="kbDistinct">0</b> 个</span>
+          <span>卡键警告：红色闪烁</span>
+        </div>
+        <div class="kb-wrap">
+          <div class="kb-board">
+            <div class="kb-main" id="kbMain"></div>
+            <div class="kb-right">
+              <div class="kb-edit" id="kbEdit"></div>
+              <div class="kb-arrows" id="kbArrows"></div>
+              <div class="kb-numpad" id="kbNumpad"></div>
+            </div>
+          </div>
+        </div>
+        <div class="recent" id="recent"></div>
+      </section>
+
+      <div class="bottom-grid">
+        <section class="tool-card glass">
+          <h3>鼠标测试</h3>
+          <div class="mouse-area" id="mouseArea">
+            <div class="m-hint">点击（左/中/右/侧键）、滚轮、移动</div>
+            <div class="m-row">
+              <div class="m-btn" id="mbLeft">左键<b>0</b></div>
+              <div class="m-btn" id="mbMiddle">中键<b>0</b></div>
+              <div class="m-btn" id="mbRight">右键<b>0</b></div>
+              <div class="m-btn" id="mbSide1">侧键1<b>0</b></div>
+              <div class="m-btn" id="mbSide2">侧键2<b>0</b></div>
+            </div>
+            <div class="m-line">滚轮：上 <b id="mwUp">0</b> 次 · 下 <b id="mwDn">0</b> 次　|　移入 <b id="mMove">0</b> 次　|　位置：<b id="mPos">-</b></div>
+          </div>
+        </section>
+
+        <section class="tool-card glass">
+          <h3>自定义 HID 设备（WebHID）</h3>
+          <p class="muted" style="font-size:0.78rem">
+            说明：<b style="color:var(--text)">标准键盘/鼠标属于浏览器保护设备，WebHID 无法读取</b>（本页用原生事件检测它们）。
+            此处可连接<b>其他自定义 HID 设备</b>查看设备信息和原始数据流。仅 Chrome/Edge，需 HTTPS 或 localhost。
+          </p>
+          <div id="hidWarn" class="warn" style="display:none"></div>
+          <button class="btn" id="hidBtn">连接 HID 设备</button>
+          <div id="hidInfo" style="font-size:0.82rem;color:var(--muted);margin-top:8px"></div>
+          <div class="rx-box" id="hidData">（连接后显示原始输入数据）</div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" style="display:none">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // ===== 键盘布局数据（标准 ANSI：固定单位宽 U，特殊键按倍数） =====
+    // [code, 宽度(U)]；'NONE' 为空占位
+    const MAIN_KEYS = [
+      [['Escape', 1], ['F1', 1], ['F2', 1], ['F3', 1], ['F4', 1], ['F5', 1], ['F6', 1], ['F7', 1], ['F8', 1], ['F9', 1], ['F10', 1], ['F11', 1], ['F12', 1]],
+      [['Backquote', 1], ['Digit1', 1], ['Digit2', 1], ['Digit3', 1], ['Digit4', 1], ['Digit5', 1], ['Digit6', 1], ['Digit7', 1], ['Digit8', 1], ['Digit9', 1], ['Digit0', 1], ['Minus', 1], ['Equal', 1], ['Backspace', 2]],
+      [['Tab', 1.5], ['KeyQ', 1], ['KeyW', 1], ['KeyE', 1], ['KeyR', 1], ['KeyT', 1], ['KeyY', 1], ['KeyU', 1], ['KeyI', 1], ['KeyO', 1], ['KeyP', 1], ['BracketLeft', 1], ['BracketRight', 1], ['Backslash', 1]],
+      [['CapsLock', 1.75], ['KeyA', 1], ['KeyS', 1], ['KeyD', 1], ['KeyF', 1], ['KeyG', 1], ['KeyH', 1], ['KeyJ', 1], ['KeyK', 1], ['KeyL', 1], ['Semicolon', 1], ['Quote', 1], ['Enter', 2.25]],
+      [['ShiftLeft', 2.25], ['KeyZ', 1], ['KeyX', 1], ['KeyC', 1], ['KeyV', 1], ['KeyB', 1], ['KeyN', 1], ['KeyM', 1], ['Comma', 1], ['Period', 1], ['Slash', 1], ['ShiftRight', 2.75]],
+      [['ControlLeft', 1.25], ['MetaLeft', 1.25], ['AltLeft', 1.25], ['Space', 6.25], ['AltRight', 1.25], ['MetaRight', 1.25], ['ContextMenu', 1.25], ['ControlRight', 1.25]]
+    ];
+
+    // 右侧编辑区（3 列）
+    const EDIT_KEYS = [
+      [['PrintScreen', 1], ['ScrollLock', 1], ['Pause', 1]],
+      [['Insert', 1], ['Home', 1], ['PageUp', 1]],
+      [['Delete', 1], ['End', 1], ['PageDown', 1]]
+    ];
+
+    // 方向键区
+    const ARROW_KEYS = [
+      [['NONE', 1], ['ArrowUp', 1], ['NONE', 1]],
+      [['ArrowLeft', 1], ['ArrowDown', 1], ['ArrowRight', 1]]
+    ];
+
+    // 数字小键盘
+    const NUMPAD_KEYS = [
+      [['NumLock', 1], ['NumpadDivide', 1], ['NumpadMultiply', 1], ['NumpadSubtract', 1]],
+      [['Numpad7', 1], ['Numpad8', 1], ['Numpad9', 1], ['NumpadAdd', 1]],
+      [['Numpad4', 1], ['Numpad5', 1], ['Numpad6', 1], ['NONE', 1]],
+      [['Numpad1', 1], ['Numpad2', 1], ['Numpad3', 1], ['NumpadEnter', 2]],
+      [['Numpad0', 2], ['NumpadDecimal', 1], ['NONE', 1]]
+    ];
+
+    const KEY_LABEL = {
+      Backquote: '`', Minus: '-', Equal: '=', Backspace: '⌫',
+      Tab: '⇥', BracketLeft: '[', BracketRight: ']', Backslash: '\\',
+      CapsLock: '⇪', Semicolon: ';', Quote: "'", Enter: '⏎',
+      ShiftLeft: '⇧', Comma: ',', Period: '.', Slash: '/', ShiftRight: '⇧',
+      ControlLeft: 'Ctrl', MetaLeft: '⊞', AltLeft: 'Alt', Space: '␣',
+      AltRight: 'Alt', MetaRight: '⊞', ContextMenu: '☰', ControlRight: 'Ctrl',
+      Escape: 'Esc', ArrowUp: '↑', ArrowLeft: '←', ArrowDown: '↓', ArrowRight: '→',
+      PrintScreen: 'PrtSc', ScrollLock: 'ScrLk', Pause: 'Pause', NumLock: 'Num',
+      NumpadDivide: '/', NumpadMultiply: '*', NumpadSubtract: '-', NumpadAdd: '+',
+      Numpad7: '7', Numpad8: '8', Numpad9: '9', Numpad4: '4', Numpad5: '5', Numpad6: '6',
+      Numpad1: '1', Numpad2: '2', Numpad3: '3', NumpadEnter: '↵', Numpad0: '0', NumpadDecimal: '.',
+      Insert: 'Ins', Home: 'Home', PageUp: 'PgUp', Delete: 'Del', End: 'End', PageDown: 'PgDn'
+    };
+
+    function keyLabel(code) {
+      if (KEY_LABEL[code]) return KEY_LABEL[code];
+      if (code.startsWith('Digit')) return code.slice(5);
+      if (code.startsWith('Key')) return code.slice(3);
+      if (/^F\d+$/.test(code)) return code;
+      return code;
+    }
+
+    const U = 36; // 单位键宽 px
+    const keyEls = {};
+    const keyCounts = {};
+
+    function renderKeys(container, rows) {
+      rows.forEach(row => {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'kb-row';
+        row.forEach(([code, w]) => {
+          const k = document.createElement('div');
+          if (code === 'NONE') {
+            k.className = 'key key-none';
+            k.style.width = w * U + 'px';
+            k.style.height = U + 'px';
+            rowDiv.appendChild(k);
+            return;
+          }
+          k.className = 'key';
+          k.style.width = w * U + 'px';
+          k.style.height = U + 'px';
+          k.textContent = keyLabel(code); // 单行文字，无计数
+          rowDiv.appendChild(k);
+          keyEls[code] = k;
+          keyCounts[code] = 0;
+        });
+        container.appendChild(rowDiv);
+      });
+    }
+
+    renderKeys(document.getElementById('kbMain'), MAIN_KEYS);
+    renderKeys(document.getElementById('kbEdit'), EDIT_KEYS);
+    renderKeys(document.getElementById('kbArrows'), ARROW_KEYS);
+    renderKeys(document.getElementById('kbNumpad'), NUMPAD_KEYS);
+
+    let kbTotal = 0;
+    let pressedTimers = {};
+    let recentList = [];
+
+    function kbUpdate() {
+      document.getElementById('kbTotal').textContent = kbTotal;
+      document.getElementById('kbDistinct').textContent = Object.keys(keyEls).filter(c => keyCounts[c] > 0).length;
+      document.getElementById('recent').innerHTML = recentList.slice(0, 8).map(r =>
+        '<code>' + r.code + '</code>(' + r.key + ')').join('');
+    }
+
+    function markStuck(code) {
+      const el = keyEls[code];
+      if (!el) return;
+      el.classList.add('stuck');
+      const bar = document.getElementById('stuckBar');
+      bar.textContent = '⚠️ 疑似卡键：' + keyLabel(code) + '（' + code + '）按住超过 2 秒未弹起，请检查该键';
+    }
+
+    // 拦截浏览器默认快捷键，避免测试时误触（F1~F12 帮助/刷新/全屏/焦点切换、Tab 焦点移动、Ctrl/Win/Alt 组合等）
+    window.addEventListener('keydown', e => {
+      if (/^F\d+$/.test(e.key) || e.key === 'Tab' || e.ctrlKey || e.metaKey || e.altKey) {
+        e.preventDefault();
+      }
+    }, true);
+
+    // 修饰键状态同步：即使输入法吞掉 Shift 等的独立按键事件，
+    // 也能从事件的 shiftKey/ctrlKey 标志推导点亮对应键帽
+    function syncModifiers(shift, ctrl, alt, meta) {
+      const apply = (codes, on) => codes.forEach(c => {
+        if (!keyEls[c]) return;
+        if (on) keyEls[c].classList.add('on', 'used');
+        else keyEls[c].classList.remove('on');
+      });
+      apply(['ShiftLeft', 'ShiftRight'], shift);
+      apply(['ControlLeft', 'ControlRight'], ctrl);
+      apply(['AltLeft', 'AltRight'], alt);
+      apply(['MetaLeft', 'MetaRight'], meta);
+    }
+
+    window.addEventListener('keydown', e => {
+      if (e.repeat) return;
+      const code = e.code;
+      if (keyEls[code]) {
+        keyEls[code].classList.add('on', 'used'); // on=当前按下，used=曾经按下（浅蓝）
+        keyCounts[code]++;
+        kbTotal++;
+        recentList.unshift({ code: code, key: e.key });
+        kbUpdate();
+        // 卡键检测
+        clearTimeout(pressedTimers[code]);
+        pressedTimers[code] = setTimeout(() => markStuck(code), 2000);
+      }
+      syncModifiers(e.shiftKey, e.ctrlKey, e.altKey, e.metaKey);
+    });
+
+    window.addEventListener('keyup', e => {
+      const code = e.code;
+      clearTimeout(pressedTimers[code]);
+      delete pressedTimers[code];
+      if (keyEls[code]) {
+        keyEls[code].classList.remove('on', 'stuck');
+        document.getElementById('stuckBar').textContent = '';
+      }
+      syncModifiers(e.shiftKey, e.ctrlKey, e.altKey, e.metaKey);
+    });
+
+    // 防止浏览器快捷键干扰测试（如 Ctrl+R 刷新页面）——不阻止，仅提示
+    window.addEventListener('blur', () => {
+      Object.values(keyEls).forEach(el => el.classList.remove('on', 'stuck'));
+    });
+
+    kbUpdate();
+
+    // ===== 鼠标测试 =====
+    const mouseArea = document.getElementById('mouseArea');
+    // button: 0左 1中 2右 3侧键1(X1/后退) 4侧键2(X2/前进)
+    const BTN_MAP = { 0: 'left', 1: 'middle', 2: 'right', 3: 'side1', 4: 'side2' };
+    const mCounts = { left: 0, middle: 0, right: 0, side1: 0, side2: 0, up: 0, down: 0, move: 0 };
+    const mEls = {
+      left: document.getElementById('mbLeft'),
+      middle: document.getElementById('mbMiddle'),
+      right: document.getElementById('mbRight'),
+      side1: document.getElementById('mbSide1'),
+      side2: document.getElementById('mbSide2')
+    };
+    const mNums = {
+      left: mEls.left.querySelector('b'),
+      middle: mEls.middle.querySelector('b'),
+      right: mEls.right.querySelector('b'),
+      side1: mEls.side1.querySelector('b'),
+      side2: mEls.side2.querySelector('b')
+    };
+
+    // 全局拦截鼠标侧键/中键默认行为（浏览器前进/后退、中键自动滚动）
+    window.addEventListener('mousedown', e => { if (e.button >= 2) e.preventDefault(); }, true);
+    window.addEventListener('auxclick', e => { if (e.button >= 2) e.preventDefault(); }, true);
+    window.addEventListener('contextmenu', e => e.preventDefault(), true);
+
+    mouseArea.addEventListener('mousedown', e => {
+      const key = BTN_MAP[e.button];
+      if (!key) return;
+      mCounts[key]++;
+      mNums[key].textContent = mCounts[key];
+      mEls[key].classList.add('on', 'used');
+    });
+
+    window.addEventListener('mouseup', e => {
+      const key = BTN_MAP[e.button];
+      if (key && mEls[key]) mEls[key].classList.remove('on');
+    });
+
+    mouseArea.addEventListener('wheel', e => {
+      if (e.deltaY < 0) { mCounts.up++; document.getElementById('mwUp').textContent = mCounts.up; }
+      else if (e.deltaY > 0) { mCounts.down++; document.getElementById('mwDn').textContent = mCounts.down; }
+    }, { passive: true });
+
+    mouseArea.addEventListener('mouseenter', () => {
+      mCounts.move++;
+      document.getElementById('mMove').textContent = mCounts.move;
+    });
+
+    mouseArea.addEventListener('mousemove', e => {
+      const r = mouseArea.getBoundingClientRect();
+      document.getElementById('mPos').textContent =
+        Math.round(e.clientX - r.left) + ', ' + Math.round(e.clientY - r.top);
+    });
+
+    // ===== 自定义 HID 设备 =====
+    const hidBtn = document.getElementById('hidBtn');
+    const hidInfo = document.getElementById('hidInfo');
+    const hidData = document.getElementById('hidData');
+    let hidDevice = null;
+
+    if (!navigator.hid) {
+      document.getElementById('hidWarn').style.display = '';
+      document.getElementById('hidWarn').textContent = '当前浏览器不支持 WebHID（需 Chrome/Edge 89+ 且 HTTPS 或 localhost 环境）。';
+      hidBtn.disabled = true;
+    }
+
+    hidBtn.addEventListener('click', async () => {
+      try {
+        const devices = await navigator.hid.requestDevice({ filters: [] });
+        if (!devices.length) return;
+        hidDevice = devices[0];
+        await hidDevice.open();
+        hidInfo.innerHTML =
+          '已连接：<b>' + (hidDevice.productName || '未知设备') + '</b>（VID: ' +
+          hidDevice.vendorId.toString(16).padStart(4, '0') + ' / PID: ' +
+          hidDevice.productId.toString(16).padStart(4, '0') + '）';
+        hidData.textContent = '等待设备数据…';
+        hidDevice.addEventListener('inputreport', e => {
+          const hex = Array.from(e.data.buffer ? new Uint8Array(e.data.buffer) : e.data)
+            .map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+          hidData.textContent = '报告 ' + e.reportId + '：' + hex + '\n' + hidData.textContent;
+          hidData.scrollTop = 0;
+        });
+      } catch (err) {
+        if (err && err.name === 'NotFoundError') return;
+        alert('HID 连接失败：' + (err && err.message ? err.message : err));
+      }
+    });
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
