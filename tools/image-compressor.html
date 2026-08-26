@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片压缩/转换工具 · Thomas455</title>
+  <meta name="description" content="纯前端图片压缩工具：支持 JPG / PNG / WebP / HEIC / HEIF，无损转换、压缩到目标大小。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .tool-card {
+      padding: 28px;
+      margin-bottom: 32px;
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(37, 99, 235, 0.35);
+      border-radius: var(--radius);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.35);
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.06);
+      color: var(--accent);
+    }
+
+    .dropzone .dz-main {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin: 24px 0;
+    }
+
+    .setting label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .setting select,
+    .setting input[type="number"],
+    .setting input[type="range"] {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .setting select:focus,
+    .setting input:focus {
+      border-color: var(--accent);
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 6px;
+      font-size: 0.92rem;
+      color: var(--text);
+    }
+
+    .mode-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 400;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .mode-row input[type="radio"] {
+      accent-color: var(--accent);
+    }
+
+    .q-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .actions {
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    /* 已添加图片预览 */
+    .previews {
+      margin-top: 20px;
+    }
+
+    .previews-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .previews-head b {
+      color: var(--text);
+    }
+
+    .btn.sm {
+      padding: 6px 14px;
+      font-size: 0.82rem;
+    }
+
+    .preview-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      border-radius: 10px;
+    }
+
+    .preview-item img {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: rgba(0, 0, 0, 0.06);
+      flex-shrink: 0;
+    }
+
+    .p-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .p-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .p-size {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .p-remove {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+      font-size: 1.1rem;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    .p-remove:hover {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    .progress {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 14px;
+      min-height: 20px;
+    }
+
+    /* 结果列表 */
+    .result-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .result-card img {
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.5);
+      flex-shrink: 0;
+    }
+
+    .result-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .result-info .fname {
+      font-weight: 600;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .result-info .fmeta {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .result-info .fmeta b {
+      color: var(--text);
+    }
+
+    .result-info .saved {
+      color: #059669;
+      font-weight: 600;
+    }
+
+    .result-info .grew {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    .result-info .tags {
+      margin-top: 6px;
+      margin-bottom: 0;
+    }
+
+    .dl-btn {
+      flex-shrink: 0;
+      padding: 8px 18px;
+      font-size: 0.88rem;
+    }
+
+    .err {
+      color: #dc2626;
+      font-size: 0.88rem;
+      margin: 6px 0;
+    }
+
+    @media (max-width: 640px) {
+      .result-card {
+        flex-wrap: wrap;
+      }
+      .dl-btn {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>图片<span class="accent">压缩/转换</span></h1>
+      <p class="muted">支持 JPG / PNG / WebP / HEIC / HEIF，全部在本地处理，不会上传你的图片。</p>
+    </section>
+
+    <section class="tool-card glass">
+      <!-- 上传区 -->
+      <div class="dropzone" id="dropzone">
+        <div class="dz-main">点击选择或拖拽图片到这里</div>
+        <div>支持多张：JPG、PNG、WebP、HEIC、HEIF</div>
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png,.webp" multiple hidden>
+      </div>
+
+      <!-- 设置区 -->
+      <div class="settings">
+        <div class="setting">
+          <label>输出格式</label>
+          <select id="outFormat">
+            <option value="keep">保持原格式</option>
+            <option value="jpeg">JPEG（.jpg）</option>
+            <option value="png">PNG（无损）</option>
+            <option value="webp">WebP</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label>压缩模式</label>
+          <div class="mode-row">
+            <label><input type="radio" name="mode" value="size" checked> 压缩到目标大小</label>
+            <label><input type="radio" name="mode" value="manual"> 手动质量</label>
+          </div>
+        </div>
+
+        <div class="setting" id="sizeSetting">
+          <label>目标大小（KB）</label>
+          <input type="number" id="targetKb" value="500" min="1" max="102400">
+        </div>
+
+        <div class="setting" id="qSetting" style="display:none">
+          <label>质量：<span id="qVal">80</span>%</label>
+          <input type="range" id="quality" min="1" max="100" value="80">
+          <div class="q-hint">PNG 模式忽略质量，始终无损</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="goBtn">开始压缩</button>
+      </div>
+      <div class="progress" id="progress"></div>
+      <div id="previews" class="previews" style="display:none">
+        <div class="previews-head">
+          <span>已添加 <b id="pcount">0</b> 张</span>
+          <button class="btn btn-outline sm" id="clearBtn">清空</button>
+        </div>
+      </div>
+      <div id="errors"></div>
+    </section>
+
+    <section id="results"></section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <!-- HEIC/HEIF 解码库（jsDelivr CDN） -->
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+
+  <script>
+    // ===== 元素 =====
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const outFormat = document.getElementById('outFormat');
+    const targetKb = document.getElementById('targetKb');
+    const quality = document.getElementById('quality');
+    const qVal = document.getElementById('qVal');
+    const sizeSetting = document.getElementById('sizeSetting');
+    const qSetting = document.getElementById('qSetting');
+    const goBtn = document.getElementById('goBtn');
+    const progress = document.getElementById('progress');
+    const errorsEl = document.getElementById('errors');
+    const resultsEl = document.getElementById('results');
+    const previewsEl = document.getElementById('previews');
+    const pcountEl = document.getElementById('pcount');
+    const clearBtn = document.getElementById('clearBtn');
+
+    let pendingFiles = [];
+
+    // ===== 图片预览列表 =====
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function renderPreviews() {
+      if (!pendingFiles.length) {
+        previewsEl.style.display = 'none';
+        return;
+      }
+      previewsEl.style.display = '';
+      pcountEl.textContent = pendingFiles.length;
+      // 清掉旧的预览项（保留头部）
+      previewsEl.querySelectorAll('.preview-item').forEach(el => el.remove());
+      pendingFiles.forEach((f, i) => {
+        const item = document.createElement('div');
+        item.className = 'preview-item glass';
+        const url = URL.createObjectURL(f);
+        const kb = f.size / 1024;
+        item.innerHTML =
+          '<img src="' + url + '" alt="">' +
+          '<div class="p-info">' +
+            '<div class="p-name">' + esc(f.name) + '</div>' +
+            '<div class="p-size">' + kb.toFixed(1) + ' KB</div>' +
+          '</div>' +
+          '<button class="p-remove" title="移除">×</button>';
+        item.querySelector('.p-remove').addEventListener('click', () => {
+          pendingFiles.splice(i, 1);
+          progress.textContent = pendingFiles.length ? '已选择 ' + pendingFiles.length + ' 张图片' : '';
+          renderPreviews();
+        });
+        previewsEl.appendChild(item);
+      });
+    }
+
+    clearBtn.addEventListener('click', () => {
+      pendingFiles = [];
+      progress.textContent = '';
+      renderPreviews();
+    });
+
+    // ===== 上传 =====
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      addFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
+
+    function addFiles(files) {
+      const imgs = Array.from(files).filter(f => f.type.startsWith('image/') || /\.(heic|heif|jpg|jpeg|png|webp)$/i.test(f.name));
+      pendingFiles = pendingFiles.concat(imgs);
+      progress.textContent = '已选择 ' + pendingFiles.length + ' 张图片';
+      renderPreviews();
+    }
+
+    // ===== 模式切换 =====
+    document.querySelectorAll('input[name="mode"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const isSize = document.querySelector('input[name="mode"]:checked').value === 'size';
+        sizeSetting.style.display = isSize ? '' : 'none';
+        qSetting.style.display = isSize ? 'none' : '';
+      });
+    });
+
+    quality.addEventListener('input', () => { qVal.textContent = quality.value; });
+
+    // ===== 核心编码 =====
+    function encodeBlob(img, type, q, scale) {
+      return new Promise(resolve => {
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * scale));
+        c.height = Math.max(1, Math.round(img.height * scale));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => resolve(b), type, q);
+      });
+    }
+
+    // 手动模式
+    async function compressManual(img, type, q) {
+      return encodeBlob(img, type, q / 100, 1);
+    }
+
+    // 目标大小模式：quality 二分，必要时缩小尺寸
+    async function compressToSize(img, type, targetBytes) {
+      let scale = 1;
+      for (let round = 0; round < 10; round++) {
+        const r = await qualitySearch(img, type, targetBytes, scale);
+        if (r.blob.size <= targetBytes) return { blob: r.blob, quality: r.quality, scale };
+        scale *= 0.85;
+      }
+      const r = await qualitySearch(img, type, targetBytes, scale);
+      return { blob: r.blob, quality: r.quality, scale };
+    }
+
+    async function qualitySearch(img, type, target, scale) {
+      // PNG 无损：忽略 quality，只靠尺寸
+      if (type === 'image/png') {
+        return { blob: await encodeBlob(img, type, 1, scale), quality: null };
+      }
+      let lo = 0.05, hi = 1, q = 0.5, best = null, bestQ = null;
+      for (let i = 0; i < 9; i++) {
+        const b = await encodeBlob(img, type, q, scale);
+        if (b.size <= target) { best = b; bestQ = q; lo = q; } else { hi = q; }
+        q = (lo + hi) / 2;
+      }
+      if (best) return { blob: best, quality: bestQ };
+      return { blob: await encodeBlob(img, type, lo, scale), quality: lo };
+    }
+
+    // ===== 解码（HEIC 需 heic2any） =====
+    async function decodeFile(file) {
+      const isHeic = /\.(heic|heif)$/i.test(file.name) || /heic|heif/i.test(file.type);
+      let blob = file;
+      if (isHeic) {
+        if (!window.heic2any) throw new Error('HEIC 转换库未加载（需要联网加载 CDN），请检查网络后刷新');
+        let out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.95 });
+        if (Array.isArray(out)) out = out[0];
+        blob = out;
+      }
+      const url = URL.createObjectURL(blob);
+      const img = await new Promise((resolve, reject) => {
+        const im = new Image();
+        im.onload = () => resolve(im);
+        im.onerror = () => reject(new Error('无法解码该图片'));
+        im.src = url;
+      });
+      return { img, url };
+    }
+
+    // ===== 输出格式映射 =====
+    const MIME = { jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+    const EXT = { jpeg: 'jpg', png: 'png', webp: 'webp' };
+
+    function decideType(keepMime, mode) {
+      const sel = outFormat.value;
+      if (sel !== 'keep') return { mime: MIME[sel], ext: EXT[sel] };
+      // 保持原格式
+      if (keepMime === 'image/png') return { mime: 'image/png', ext: 'png' };
+      if (keepMime === 'image/webp') return { mime: 'image/webp', ext: 'webp' };
+      return { mime: 'image/jpeg', ext: 'jpg' }; // jpg/heic 兜底 jpeg
+    }
+
+    // ===== 主流程 =====
+    async function run() {
+      if (!pendingFiles.length) { progress.textContent = '请先选择图片'; return; }
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const targetBytes = parseInt(targetKb.value, 10) * 1024;
+      const manualQ = parseInt(quality.value, 10);
+
+      goBtn.disabled = true;
+      resultsEl.innerHTML = '';
+      errorsEl.innerHTML = '';
+      progress.textContent = '';
+
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const file = pendingFiles[i];
+        progress.textContent = '正在处理 ' + (i + 1) + ' / ' + pendingFiles.length + '：' + file.name;
+        try {
+          const { img, url } = await decodeFile(file);
+          const t = decideType(file.type, mode);
+          let res;
+          if (mode === 'manual') {
+            res = { blob: await compressManual(img, t.mime, manualQ), quality: manualQ, scale: 1 };
+          } else {
+            res = await compressToSize(img, t.mime, targetBytes);
+          }
+          appendResult(file, img, url, res, t, mode);
+        } catch (err) {
+          const d = document.createElement('div');
+          d.className = 'err';
+          d.textContent = '✗ ' + file.name + '：' + err.message;
+          errorsEl.appendChild(d);
+        }
+      }
+      pendingFiles = [];
+      renderPreviews();
+      goBtn.disabled = false;
+      progress.textContent = '全部完成';
+    }
+
+    function appendResult(file, img, origUrl, res, t, mode) {
+      const origKB = file.size / 1024;
+      const newKB = res.blob.size / 1024;
+      const ratio = Math.round((1 - res.blob.size / file.size) * 100);
+      const card = document.createElement('div');
+      card.className = 'result-card glass';
+
+      const newUrl = URL.createObjectURL(res.blob);
+      const nameBase = file.name.replace(/\.[^.]+$/, '');
+      const dlName = nameBase + '_compressed.' + t.ext;
+
+      let meta = '原 ' + origKB.toFixed(1) + ' KB → 新 ' + newKB.toFixed(1) + ' KB　';
+      meta += ratio >= 0
+        ? '<span class="saved">节省 ' + ratio + '%</span>'
+        : '<span class="grew">变大 ' + (-ratio) + '%</span>';
+
+      let tags = '<span class="badge">' + t.ext.toUpperCase() + '</span>';
+      if (t.mime === 'image/png' && mode === 'size') tags += '<span class="badge">无损</span>';
+      if (res.quality != null) tags += '<span class="badge">质量 ' + Math.round(res.quality * 100) + '%</span>';
+      if (res.scale < 1) tags += '<span class="badge">尺寸 ' + Math.round(res.scale * 100) + '%</span>';
+
+      card.innerHTML =
+        '<img src="' + newUrl + '" alt="">' +
+        '<div class="result-info">' +
+          '<div class="fname">' + dlName + '</div>' +
+          '<div class="fmeta"><b>' + img.width + '×' + img.height + '</b>　' + meta + '</div>' +
+          '<div class="tags">' + tags + '</div>' +
+        '</div>' +
+        '<a class="btn dl-btn" download="' + dlName + '" href="' + newUrl + '">下载</a>';
+
+      resultsEl.appendChild(card);
+    }
+
+    goBtn.addEventListener('click', run);
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

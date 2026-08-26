@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MC 玩家查询 · Thomas455</title>
+  <meta name="description" content="Minecraft 玩家信息查询：UUID、皮肤、披风、改名历史、3D 皮肤模型。数据来自 Mojang 官方数据（经 ashcon API）。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .tool-card {
+      padding: 28px;
+      margin-bottom: 32px;
+    }
+
+    .query-row {
+      display: flex;
+      gap: 10px;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .query-row input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .query-row input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    .query-row .btn {
+      flex-shrink: 0;
+    }
+
+    .progress {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 14px;
+      min-height: 20px;
+    }
+
+    /* 玩家结果 */
+    .player-card {
+      padding: 24px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .model-wrap {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+
+    /* 全屏按钮 */
+    .fs-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 5;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(8px);
+      color: var(--text);
+      font-size: 1.05rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .fs-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* 全屏状态：模型区撑满屏幕 */
+    .model-wrap:fullscreen {
+      background: linear-gradient(135deg, #eef3ff, #fdf7f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .model-wrap:fullscreen .model-3d {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      border: none;
+    }
+
+    .model-wrap:fullscreen .caption,
+    .model-wrap:fullscreen .model-type,
+    .model-wrap:fullscreen .model-opts {
+      display: none;
+    }
+
+    .model-3d {
+      width: 240px;
+      height: 240px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.7), rgba(37, 99, 235, 0.06));
+      box-shadow: 0 4px 16px rgba(31, 35, 40, 0.08);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .model-wrap .caption {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .model-type {
+      font-size: 0.78rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .model-opts {
+      display: flex;
+      gap: 14px;
+      margin-top: 4px;
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+
+    .model-opts label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-weight: 400;
+    }
+
+    .model-opts input[type="checkbox"] {
+      accent-color: var(--accent);
+    }
+
+    .model-fallback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 0 16px;
+      text-align: center;
+    }
+
+    .player-info {
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .pname {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+      word-break: break-all;
+    }
+
+    .fmeta {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 4px 0;
+      word-break: break-all;
+    }
+
+    .fmeta b {
+      color: var(--text);
+      font-family: Consolas, Monaco, monospace;
+      font-size: 0.85rem;
+    }
+
+    .tags {
+      margin: 10px 0;
+      flex-wrap: wrap;
+    }
+
+    .tags .badge { margin-bottom: 4px; }
+
+    .history-list {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .history-list .player-chip {
+      font-size: 0.8rem;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--accent);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+
+    .history-list .arrow {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .actions .btn {
+      padding: 8px 18px;
+      font-size: 0.88rem;
+    }
+
+    /* 皮肤贴图预览 */
+    .skin-block {
+      width: 100%;
+      border-top: 1px dashed rgba(31, 35, 40, 0.12);
+      padding-top: 14px;
+      margin-top: 6px;
+    }
+
+    .skin-block .lbl {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .skin-imgs {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .skin-img {
+      max-width: 128px;
+      height: auto;
+      image-rendering: pixelated;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .cape-img {
+      height: 88px;
+      width: auto;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .err-card {
+      text-align: center;
+      padding: 36px 20px;
+      color: var(--muted);
+    }
+
+    .err-card .big {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .source-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-bottom: 48px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>MC 玩家<span class="accent">查询</span></h1>
+      <p class="muted">查询正版玩家的 UUID、皮肤、披风、改名历史，3D 皮肤模型可拖动查看。</p>
+    </section>
+
+    <section class="tool-card glass">
+      <div class="query-row">
+        <input type="text" id="name" placeholder="输入玩家名，例如 Notch" list="historyList" autocomplete="off">
+        <datalist id="historyList"></datalist>
+        <button class="btn" id="queryBtn">查询</button>
+      </div>
+      <div class="progress" id="progress"></div>
+    </section>
+
+    <section id="result"></section>
+    <p class="source-note">数据来源：Mojang 官方数据（经 ashcon.app 聚合 API）</p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <!-- MC 皮肤 3D 查看器（本地文件，bs-community/skinview3d） -->
+  <script src="../assets/js/skinview3d.min.js"></script>
+
+  <script>
+    const nameInput = document.getElementById('name');
+    const queryBtn = document.getElementById('queryBtn');
+    const progress = document.getElementById('progress');
+    const resultEl = document.getElementById('result');
+    const historyList = document.getElementById('historyList');
+    let querying = false; // 查询进行中标志（防重复提交）
+
+    // ===== 带超时与自动重试的 fetch（ashcon 网络时通时断，重试可提高成功率） =====
+    async function fetchWithRetry(url, retries = 2) {
+      let lastErr = null;
+      for (let i = 0; i <= retries; i++) {
+        if (i > 0) { progress.textContent = '网络波动，正在重试…'; await new Promise(r => setTimeout(r, 900)); }
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 10000);
+        try {
+          const resp = await fetch(url, { signal: ctrl.signal });
+          clearTimeout(timer);
+          return resp;
+        } catch (err) {
+          clearTimeout(timer);
+          lastErr = err;
+        }
+      }
+      throw lastErr;
+    }
+
+    // ===== 查询历史（localStorage） =====
+    const HISTORY_KEY = 'mcpq_history';
+    function loadHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch (e) { return []; }
+    }
+    function saveHistory(name) {
+      let h = loadHistory().filter(x => x.toLowerCase() !== name.toLowerCase());
+      h.unshift(name);
+      h = h.slice(0, 8);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+    }
+    function renderHistory() {
+      historyList.innerHTML = '';
+      loadHistory().forEach(n => {
+        const o = document.createElement('option');
+        o.value = n;
+        historyList.appendChild(o);
+      });
+    }
+
+    // ===== 查询 =====
+    async function query() {
+      if (querying) return; // 防重复提交
+      querying = true;
+      queryBtn.disabled = true;
+      const name = nameInput.value.trim();
+      if (!name) { progress.textContent = '请输入玩家名'; querying = false; queryBtn.disabled = false; return; }
+      resultEl.innerHTML = '';
+      progress.textContent = '正在查询 ' + name + ' …';
+      try {
+        const resp = await fetchWithRetry('https://api.ashcon.app/mojang/v2/user/' + encodeURIComponent(name));
+        if (resp.status === 404) {
+          progress.textContent = '';
+          renderError(name, '玩家不存在（不是正版账号或名字拼写有误）');
+          return;
+        }
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        var data = await resp.json();
+      } catch (err) {
+        progress.textContent = '';
+        let msg;
+        if (err instanceof TypeError || err.name === 'AbortError') {
+          msg = '网络请求失败：多次重试仍无法访问 api.ashcon.app。可能是网络波动或该服务暂时不可达，请稍后重试。';
+        } else {
+          msg = err.message || '查询失败，请重试';
+        }
+        renderError(name, msg);
+        return;
+      }
+      // 渲染与网络请求分离：渲染出错时输出到控制台，便于排查
+      try {
+        saveHistory(name);
+        renderHistory();
+        renderPlayer(data, name);
+        progress.textContent = '';
+      } catch (err) {
+        console.error('渲染出错：', err);
+        progress.textContent = '';
+        renderError(name, '渲染出错：' + (err && err.message ? err.message : '未知错误'));
+      } finally {
+        querying = false;
+        queryBtn.disabled = false;
+      }
+    }
+
+    // ashcon 返回的 base64 无 data: 前缀，统一补全
+    function toDataUrl(b64) {
+      if (!b64) return '';
+      return b64.indexOf('data:') === 0 ? b64 : 'data:image/png;base64,' + b64;
+    }
+
+    // 披风：优先 ashcon 的 cape 字段，其次解析 Mojang 原始数据 raw.value 中的 CAPE
+    function getCapeUrl(textures) {
+      if (!textures) return '';
+      const toHttps = u => u.replace(/^http:\/\//i, 'https://');
+      if (textures.cape) {
+        if (textures.cape.data) return toDataUrl(textures.cape.data);
+        if (textures.cape.url) return toHttps(textures.cape.url);
+      }
+      if (textures.raw && textures.raw.value) {
+        try {
+          const dec = JSON.parse(atob(textures.raw.value));
+          if (dec.textures && dec.textures.CAPE && dec.textures.CAPE.url) {
+            return toHttps(dec.textures.CAPE.url);
+          }
+        } catch (e) { /* raw 解析失败则无披风 */ }
+      }
+      return '';
+    }
+
+    // ===== 3D 皮肤模型（skinview3d） =====
+    // 当前 3D viewer（每次查询前 dispose 旧实例，避免 WebGL 上下文耗尽）
+    let currentViewer = null;
+
+    function initModel(container, skinUrl, slim, capeUrl) {
+      if (!window.skinview3d) {
+        container.innerHTML = '<div class="model-fallback">3D 渲染库加载失败<br>（请刷新重试）</div>';
+        return null;
+      }
+      if (currentViewer) {
+        try { currentViewer.dispose(); } catch (e) { /* 忽略 */ }
+        currentViewer = null;
+      }
+      const w = container.clientWidth || 240;
+      const h = container.clientHeight || 240;
+      container.innerHTML = '';
+      // skinview3d v3 API：必须传入 canvas 元素（v2 是 domElement）
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      container.appendChild(canvas);
+      const viewer = new skinview3d.SkinViewer({
+        canvas: canvas,
+        width: w,
+        height: h,
+        skin: skinUrl,
+        cape: capeUrl || undefined
+      });
+      currentViewer = viewer;
+      // v3 自动检测模型类型（Slim / Default），无需手动设置
+      // 视角控制：拖动旋转、滚轮缩放
+      viewer.controls.enableZoom = true;
+      viewer.controls.enablePan = false;
+      viewer.controls.minDistance = 18;
+      viewer.controls.maxDistance = 80;
+      viewer.controls.target.set(0, 12, 0);
+      return {
+        setCape(v) { viewer.playerObject.cape.visible = v; },
+        setOverlay(v) { viewer.playerObject.skin.setOuterLayerVisible(v); },
+        viewer: viewer
+      };
+    }
+
+    // 披风贴图：正面图案是左半边正方形（64x32 → 32x32；128x64 → 64x64），右半为背面镜像
+    function capeFaceRect(w, h) {
+      if (w >= 2 * h) return { x: 0, y: 0, w: h, h: h };
+      return { x: 0, y: 0, w: w, h: h };
+    }
+
+    // ===== 渲染 =====
+    // 渲染前强制清空结果区，确保只显示一张卡片
+    function renderPlayer(data, inputName) {
+      resultEl.innerHTML = '';
+      const card = document.createElement('div');
+      card.className = 'player-card glass';
+
+      const uuid = data.uuid || '';
+      const uuidRaw = uuid.replace(/-/g, '');
+      const skin = data.textures && data.textures.skin;
+      const cape = data.textures && data.textures.cape;
+      const slim = !!(data.textures && data.textures.slim);
+      const custom = !!(data.textures && data.textures.custom);
+      const skinUrl = skin ? toDataUrl(skin.data) : '';
+      const capeUrl = getCapeUrl(data.textures);
+
+      // 徽章
+      let badges = '';
+      if (data.username === inputName) badges += '<span class="badge">当前名称</span>';
+      else badges += '<span class="badge">曾用名：' + esc(inputName) + '</span>';
+      badges += '<span class="badge">' + (slim ? 'Alex 纤细模型' : 'Steve 经典模型') + '</span>';
+      badges += '<span class="badge">' + (custom ? '自定义皮肤' : '默认皮肤') + '</span>';
+
+      // 改名历史
+      let history = '';
+      if (Array.isArray(data.username_history) && data.username_history.length > 1) {
+        history = '<div class="history-list">' +
+          data.username_history.map(h => {
+            return '<span class="player-chip">' + esc(h.username) + '</span>';
+          }).join('<span class="arrow">→</span>') +
+          '</div>';
+      }
+
+      // 皮肤贴图预览
+      let skinBlock = '';
+      if (skinUrl) {
+        const capeHtml = capeUrl
+          ? '<img class="cape-img" src="' + capeUrl + '" alt="披风">'
+          : '<span class="fmeta" style="align-self:center">无 Mojang 官方披风（第三方披风如 OptiFine 无法查询）</span>';
+        skinBlock = '<div class="skin-block">' +
+          '<div class="lbl">皮肤贴图</div>' +
+          '<div class="skin-imgs">' +
+            '<img class="skin-img" src="' + skinUrl + '" alt="皮肤">' +
+            capeHtml +
+          '</div>' +
+          '<div class="actions">' +
+            '<button class="btn btn-outline dl-skin">下载皮肤</button>' +
+            (capeUrl ? '<button class="btn btn-outline dl-cape">下载披风</button>' : '') +
+            '<button class="btn btn-outline dl-head">下载头像</button>' +
+          '</div>' +
+        '</div>';
+      }
+
+      card.innerHTML =
+        '<div class="model-wrap">' +
+          '<div class="model-3d" id="model3d"><div class="model-fallback">正在加载 3D 模型…</div></div>' +
+          '<button class="fs-btn" id="fsBtn" title="全屏预览">⛶</button>' +
+          '<span class="caption">拖动旋转 · 滚轮缩放</span>' +
+          '<span class="model-type">' + (slim ? 'Alex 纤细模型' : 'Steve 经典模型') + '</span>' +
+          '<div class="model-opts">' +
+            '<label><input type="checkbox" id="optCape" checked> 披风</label>' +
+            '<label><input type="checkbox" id="optOverlay" checked> 外层皮肤</label>' +
+          '</div>' +
+        '</div>' +
+        '<div class="player-info">' +
+          '<div class="pname">' + esc(data.username || inputName) + '</div>' +
+          '<div class="tags">' + badges + '</div>' +
+          '<div class="fmeta">UUID：<b>' + esc(uuid) + '</b></div>' +
+          '<div class="fmeta">UUID（无连字符）：<b>' + esc(uuidRaw) + '</b></div>' +
+          history +
+          skinBlock +
+        '</div>';
+
+      resultEl.appendChild(card);
+
+      // 3D 模型
+      if (skinUrl) {
+        const ctrl = initModel(card.querySelector('.model-3d'), skinUrl, slim, capeUrl);
+        if (ctrl) {
+          const optCape = card.querySelector('#optCape');
+          const optOverlay = card.querySelector('#optOverlay');
+          if (!capeUrl && optCape) { optCape.disabled = true; optCape.checked = false; }
+          if (optCape) optCape.addEventListener('change', () => ctrl.setCape(optCape.checked));
+          if (optOverlay) optOverlay.addEventListener('change', () => ctrl.setOverlay(optOverlay.checked));
+
+          // 全屏预览
+          const fsBtn = card.querySelector('.fs-btn');
+          const wrap = card.querySelector('.model-wrap');
+          if (fsBtn && ctrl.viewer) {
+            fsBtn.addEventListener('click', async () => {
+              try {
+                if (document.fullscreenElement) {
+                  await document.exitFullscreen();
+                } else if (wrap.requestFullscreen) {
+                  await wrap.requestFullscreen();
+                }
+              } catch (e) { /* 忽略 */ }
+            });
+            document.addEventListener('fullscreenchange', () => {
+              const v = ctrl.viewer;
+              if (document.fullscreenElement === wrap) {
+                v.width = window.innerWidth;
+                v.height = window.innerHeight;
+              } else {
+                v.width = 240;
+                v.height = 240;
+              }
+            });
+          } else if (fsBtn) {
+            fsBtn.style.display = 'none';
+          }
+        }
+      } else {
+        card.querySelector('.model-3d').innerHTML = '<div class="model-fallback">无皮肤数据</div>';
+      }
+
+      // 下载按钮
+      const dl = (dataUrl, filename) => {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename;
+        a.click();
+      };
+      const dlSkin = card.querySelector('.dl-skin');
+      if (dlSkin) dlSkin.addEventListener('click', () => dl(skinUrl, (data.username || inputName) + '_skin.png'));
+      const dlCape = card.querySelector('.dl-cape');
+      if (dlCape) dlCape.addEventListener('click', async () => {
+        const filename = (data.username || inputName) + '_cape.png';
+        try {
+          if (capeUrl.startsWith('data:')) { dl(capeUrl, filename); return; }
+          const r = await fetch(capeUrl);
+          const b = await r.blob();
+          dl(URL.createObjectURL(b), filename);
+        } catch (e) {
+          dlCape.textContent = '下载失败';
+        }
+      });
+
+      // 2D 披风预览：裁剪出左半正方形正面图案，避免拉伸变形
+      const capeImgEl = card.querySelector('.cape-img');
+      if (capeImgEl) {
+        capeImgEl.onload = () => {
+          try {
+            const r = capeFaceRect(capeImgEl.naturalWidth, capeImgEl.naturalHeight);
+            const c = document.createElement('canvas');
+            c.width = r.w; c.height = r.h;
+            c.getContext('2d').drawImage(capeImgEl, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
+            capeImgEl.onload = null;
+            capeImgEl.src = c.toDataURL('image/png');
+          } catch (e) { /* 裁剪失败则保留原图 */ }
+        };
+      }
+      const dlHead = card.querySelector('.dl-head');
+      if (dlHead) dlHead.addEventListener('click', () => {
+        const c = document.createElement('canvas');
+        c.width = 256; c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 8, 8, 8, 8, 0, 0, 256, 256);
+          dl(c.toDataURL('image/png'), (data.username || inputName) + '_head.png');
+        };
+        img.src = skinUrl;
+      });
+    }
+
+    function renderError(name, msg) {
+      resultEl.innerHTML = '';
+      const card = document.createElement('div');
+      card.className = 'player-card glass err-card';
+      card.innerHTML =
+        '<div class="big">' + esc(name) + '</div>' +
+        '<div>' + esc(msg) + '</div>';
+      resultEl.appendChild(card);
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    queryBtn.addEventListener('click', query);
+    nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') query(); });
+    renderHistory();
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

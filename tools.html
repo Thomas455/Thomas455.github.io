@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>在线工具 · Thomas455</title>
+  <meta name="description" content="Thomas455 的在线小工具集合。">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    .tool-search {
+      display: block;
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto 24px;
+      padding: 12px 20px;
+      font-size: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 999px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: var(--text);
+      box-shadow: 0 4px 16px rgba(31, 35, 40, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .tool-search:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="tools.html">工具</a></li>
+        <li><a href="nav.html">导航</a></li>
+        <li><a href="index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1>在线<span class="accent">工具</span></h1>
+        <p class="intro">一些能直接在浏览器里用的小工具，陆续添加中。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>工具列表</h2>
+        <input class="tool-search" id="toolSearch" type="text" placeholder="搜索工具名称或说明…" autocomplete="off">
+        <div class="grid" id="toolGrid">
+
+          <article class="card">
+            <h3>图片压缩/转换工具</h3>
+            <p>支持 JPG / PNG / WebP / HEIC / HEIF，无损转换、压缩到目标大小，全部本地处理。</p>
+            <a class="card-link" href="tools/image-compressor.html">打开工具 →</a>
+          </article>
+
+          <article class="card">
+            <h3>MC 服务器查询</h3>
+            <p>查询 Minecraft 服务器状态：MOTD、版本、在线人数，支持 Java / Bedrock 版。</p>
+            <a class="card-link" href="tools/mc-server-query.html">打开工具 →</a>
+          </article>
+
+          <article class="card">
+            <h3>MC 玩家查询</h3>
+            <p>查询正版玩家的 UUID、皮肤、披风与改名历史，可下载皮肤和头像。</p>
+            <a class="card-link" href="tools/mc-player-query.html">打开工具 →</a>
+          </article>
+
+          <article class="card">
+            <h3>更多工具开发中</h3>
+            <p>有想用的工具可以直接告诉我，我来做。</p>
+            <span class="badge">敬请期待</span>
+          </article>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="index.html">返回主页</a></p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // 工具搜索
+    const toolSearch = document.getElementById('toolSearch');
+    toolSearch.addEventListener('input', () => {
+      const q = toolSearch.value.trim().toLowerCase();
+      document.querySelectorAll('#toolGrid .card').forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = (!q || text.includes(q)) ? '' : 'none';
+      });
+    });
+  </script>
+</body>
+</html>

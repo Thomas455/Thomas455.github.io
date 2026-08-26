@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MC 服务器查询 · Thomas455</title>
+  <meta name="description" content="Minecraft 服务器状态查询：Java / Bedrock 版，MOTD、在线人数、版本、延迟。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .tool-card {
+      padding: 28px;
+      margin-bottom: 32px;
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    .setting label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .setting input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .setting input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 6px;
+      font-size: 0.92rem;
+    }
+
+    .mode-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 400;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .mode-row input[type="radio"] {
+      accent-color: var(--accent);
+    }
+
+    .actions {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .progress {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 14px;
+      min-height: 20px;
+    }
+
+    /* 查询结果 */
+    .result-card {
+      padding: 22px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+    }
+
+    .srv-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .srv-icon.placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--muted);
+      background: rgba(37, 99, 235, 0.08);
+    }
+
+    .result-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot.online { background: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); }
+    .dot.offline { background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); }
+
+    .host-name {
+      font-weight: 700;
+      font-size: 1.05rem;
+      word-break: break-all;
+    }
+
+    .status-text {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .motd {
+      background: rgba(0, 0, 0, 0.06);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.95rem;
+      line-height: 1.8;
+      margin: 10px 0;
+      word-break: break-word;
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+
+    .fmeta {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 3px 0;
+    }
+
+    .fmeta b { color: var(--text); }
+
+    .player-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .player-chip {
+      font-size: 0.78rem;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--accent);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+    }
+
+    .tags { margin-top: 8px; margin-bottom: 0; }
+
+    .offline-card {
+      text-align: center;
+      padding: 36px 20px;
+      color: var(--muted);
+    }
+
+    .offline-card .big {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .source-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-bottom: 48px;
+    }
+
+    .btn.sm {
+      padding: 6px 14px;
+      font-size: 0.82rem;
+    }
+
+    .motd-actions {
+      margin-top: 8px;
+    }
+
+    .statusimg-block {
+      margin-top: 16px;
+      border-top: 1px dashed rgba(31, 35, 40, 0.12);
+      padding-top: 14px;
+    }
+
+    .img-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .img-actions select {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 0.85rem;
+    }
+
+    .img-actions select:focus {
+      border-color: var(--accent);
+    }
+
+    .status-img {
+      width: 100%;
+      max-width: 480px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 4px 16px rgba(31, 35, 40, 0.08);
+    }
+
+    /* 全端口扫描 */
+    .scan-summary {
+      text-align: center;
+      padding: 18px;
+      margin-bottom: 16px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .port-card {
+      padding: 14px 18px;
+      margin-bottom: 10px;
+    }
+
+    .port-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .port-head .port {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .port-meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 2px 0;
+    }
+
+    .port-card .motd {
+      margin: 8px 0;
+      padding: 10px 12px;
+      font-size: 0.88rem;
+    }
+
+    .port-offline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding: 6px 4px;
+      border-bottom: 1px dashed rgba(31, 35, 40, 0.08);
+    }
+
+    .port-offline:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>MC 服务器<span class="accent">查询</span></h1>
+      <p class="muted">查询 Minecraft 服务器状态：MOTD、版本、在线人数，支持 Java / Bedrock 版。</p>
+    </section>
+
+    <section class="tool-card glass">
+      <div class="settings">
+        <div class="setting">
+          <label>版本类型</label>
+          <div class="mode-row">
+            <label><input type="radio" name="edition" value="auto" checked> 自动</label>
+            <label><input type="radio" name="edition" value="je"> Java 版</label>
+            <label><input type="radio" name="edition" value="be"> Bedrock 版</label>
+          </div>
+        </div>
+        <div class="setting" style="grid-column: span 2">
+          <label>服务器地址（IP 或域名，可带端口）</label>
+          <input type="text" id="host" placeholder="例如 play.hypixel.net" list="historyList" autocomplete="off">
+          <datalist id="historyList"></datalist>
+        </div>
+        <div class="setting" style="grid-column: span 2">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            <input type="checkbox" id="fullScan" style="accent-color: var(--accent);flex-shrink:0"> 常见端口扫描（15 个常见 MC 端口，约 10~20 秒，忽略输入端口）
+          </label>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="queryBtn">查询</button>
+      </div>
+      <div class="progress" id="progress"></div>
+    </section>
+
+    <section id="result"></section>
+    <p class="source-note">数据来源：MineBBS MOTD API（motd.minebbs.com）· 查询在浏览器本地发起</p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const hostInput = document.getElementById('host');
+    const queryBtn = document.getElementById('queryBtn');
+    const progress = document.getElementById('progress');
+    const resultEl = document.getElementById('result');
+    const historyList = document.getElementById('historyList');
+
+    // ===== 查询历史（localStorage） =====
+    const HISTORY_KEY = 'mcq_history';
+    function loadHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch (e) { return []; }
+    }
+    function saveHistory(host) {
+      let h = loadHistory().filter(x => x !== host);
+      h.unshift(host);
+      h = h.slice(0, 8);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+    }
+    function renderHistory() {
+      historyList.innerHTML = '';
+      loadHistory().forEach(h => {
+        const o = document.createElement('option');
+        o.value = h;
+        historyList.appendChild(o);
+      });
+    }
+
+    // ===== 常见端口（全端口查询用） =====
+    const JE_PORTS = [25565, 25566, 25570, 25575, 25580, 25600, 25560, 30000, 30010, 40000];
+    const BE_PORTS = [19132, 19133, 19130, 19134, 19138, 25565];
+
+    // ===== 查询（数据源：motd.minebbs.com，国内节点，支持 stype=auto 自动检测） =====
+    async function query() {
+      const host = hostInput.value.trim();
+      if (!host) { progress.textContent = '请输入服务器地址'; return; }
+      const stype = document.querySelector('input[name="edition"]:checked').value; // auto | je | be
+
+      // 拆分 ip:port
+      let ip = host, port = '';
+      const ci = host.indexOf(':');
+      if (ci > -1) { ip = host.slice(0, ci); port = host.slice(ci + 1); }
+
+      // 全端口扫描
+      if (document.getElementById('fullScan').checked) {
+        await fullScan(ip, stype);
+        return;
+      }
+
+      resultEl.innerHTML = '';
+      progress.textContent = '正在查询 ' + host + ' …';
+      queryBtn.disabled = true;
+      const t0 = performance.now();
+
+      try {
+        const url = 'https://motd.minebbs.com/api/status?ip=' + encodeURIComponent(ip) +
+          (port ? '&port=' + encodeURIComponent(port) : '') +
+          '&stype=' + stype + '&srv=true';
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        const latency = Math.round(performance.now() - t0);
+        if (data.status === 'online') {
+          saveHistory(host);
+          renderHistory();
+        }
+        renderResult(data, host, latency, { ip: ip, port: port, stype: stype });
+        progress.textContent = '';
+      } catch (err) {
+        progress.textContent = '';
+        let msg;
+        if (err instanceof TypeError) {
+          msg = '网络请求失败：浏览器无法访问 motd.minebbs.com。可能是网络问题、代理拦截或本地预览环境的限制。';
+        } else {
+          msg = err.message || '查询失败，请检查地址后重试';
+        }
+        renderError(host, msg);
+      } finally {
+        queryBtn.disabled = false;
+      }
+    }
+
+    // ===== 全端口扫描 =====
+    async function fullScan(ip, stype) {
+      const ports = [...new Set(stype === 'je' ? JE_PORTS : stype === 'be' ? BE_PORTS : JE_PORTS.concat(BE_PORTS))];
+      resultEl.innerHTML = '';
+      queryBtn.disabled = true;
+      let onlineCount = 0;
+      let offlineCount = 0;
+
+      const summary = document.createElement('div');
+      summary.className = 'scan-summary glass';
+      summary.textContent = '正在扫描 ' + ports.length + ' 个常见端口…';
+      resultEl.appendChild(summary);
+
+      const list = document.createElement('div');
+      resultEl.appendChild(list);
+
+      for (let i = 0; i < ports.length; i++) {
+        const p = ports[i];
+        progress.textContent = '扫描中 ' + (i + 1) + ' / ' + ports.length + '（端口 ' + p + '）…';
+        try {
+          const resp = await fetch('https://motd.minebbs.com/api/status?ip=' + encodeURIComponent(ip) +
+            '&port=' + p + '&stype=' + stype + '&srv=true');
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const data = await resp.json();
+          if (data.status === 'online') {
+            onlineCount++;
+            appendPortCard(list, data, p);
+          } else {
+            offlineCount++;
+            appendOfflinePort(list, p);
+          }
+        } catch (e) {
+          offlineCount++;
+          appendOfflinePort(list, p, true);
+        }
+      }
+
+      summary.textContent = '扫描完成：' + ports.length + ' 个端口，' + onlineCount + ' 个在线，' + offlineCount + ' 个离线/无响应';
+      progress.textContent = '';
+      queryBtn.disabled = false;
+      saveHistory(ip);
+      renderHistory();
+    }
+
+    function appendPortCard(list, data, port) {
+      const card = document.createElement('div');
+      card.className = 'port-card glass';
+      const pl = data.players || {};
+      card.innerHTML =
+        '<div class="port-head">' +
+          '<span class="dot online"></span>' +
+          '<span class="port">:' + port + '</span>' +
+          '<span class="status-text">' + esc(data.type || '') + ' · 在线</span>' +
+        '</div>' +
+        (data.motd ? '<div class="motd">' + motdToHtml(data.motd) + '</div>' : '') +
+        '<div class="port-meta">版本：<b>' + esc(data.version || '未知') + '</b>' +
+          (data.protocol ? '（协议 ' + data.protocol + '）' : '') + '</div>' +
+        '<div class="port-meta">玩家：<b>' + (pl.online != null ? pl.online : '?') + ' / ' +
+          (pl.max != null ? pl.max : '?') + '</b></div>';
+      list.appendChild(card);
+    }
+
+    function appendOfflinePort(list, port, err) {
+      const row = document.createElement('div');
+      row.className = 'port-offline';
+      row.innerHTML =
+        '<span class="dot offline"></span>' +
+        '<span>:' + port + '　' + (err ? '查询失败' : '离线/无响应') + '</span>';
+      list.appendChild(row);
+    }
+
+    // ===== MC 颜色代码 → HTML =====
+    const MC_COLOR = {
+      '0': '#000000', '1': '#0000AA', '2': '#00AA00', '3': '#00AAAA',
+      '4': '#AA0000', '5': '#AA00AA', '6': '#FFAA00', '7': '#AAAAAA',
+      '8': '#555555', '9': '#5555FF', 'a': '#55FF55', 'b': '#55FFFF',
+      'c': '#FF5555', 'd': '#FF55FF', 'e': '#FFFF55', 'f': '#FFFFFF'
+    };
+
+    function motdToHtml(raw) {
+      if (!raw) return '';
+      const parts = String(raw).split('§');
+      let out = esc(parts[0]);
+      let color = '', bold = false, italic = false, underline = false, strike = false;
+      for (let i = 1; i < parts.length; i++) {
+        const code = parts[i].charAt(0).toLowerCase();
+        const rest = esc(parts[i].slice(1));
+        if (MC_COLOR[code]) {
+          color = MC_COLOR[code];
+        } else if (code === 'l') { bold = true; }
+        else if (code === 'o') { italic = true; }
+        else if (code === 'n') { underline = true; }
+        else if (code === 'm') { strike = true; }
+        else if (code === 'r') { color = ''; bold = italic = underline = strike = false; }
+        let style = '';
+        if (color) style += 'color:' + color + ';';
+        if (bold) style += 'font-weight:bold;';
+        if (italic) style += 'font-style:italic;';
+        if (underline) style += 'text-decoration:underline;';
+        if (strike) style += 'text-decoration:line-through;';
+        out += style ? '<span style="' + style + '">' + rest + '</span>' : rest;
+      }
+      return out;
+    }
+
+    // ===== 渲染结果 =====
+    function renderResult(data, host, latency, q) {
+      if (data.status !== 'online') { renderError(host, '服务器离线或无法连接'); return; }
+
+      const card = document.createElement('div');
+      card.className = 'result-card glass';
+
+      // 图标
+      let iconHtml;
+      if (data.icon && data.icon.startsWith('data:image')) {
+        iconHtml = '<img class="srv-icon" src="' + data.icon + '" alt="">';
+      } else {
+        iconHtml = '<div class="srv-icon placeholder">' + host.charAt(0).toUpperCase() + '</div>';
+      }
+
+      // 状态行
+      const statusLine =
+        '<div class="status-line">' +
+          '<span class="dot online"></span>' +
+          '<span class="host-name">' + esc(data.host || host) + '</span>' +
+          '<span class="status-text">在线</span>' +
+        '</div>';
+
+      // MOTD（含颜色代码渲染）
+      const motdBlock = data.motd
+        ? '<div class="motd">' + motdToHtml(data.motd) + '</div>' +
+          '<div class="motd-actions"><button class="btn btn-outline sm copy-motd">复制纯文本 MOTD</button></div>'
+        : '';
+
+      // 版本
+      const verText = data.version || '未知';
+      const protoText = data.protocol ? '（协议 ' + data.protocol + '）' : '';
+
+      // 玩家
+      const pl = data.players || {};
+      const onlineN = pl.online != null ? pl.online : '?';
+      const maxN = pl.max != null ? pl.max : '?';
+      let playerChips = '';
+      if (Array.isArray(pl.sample) && pl.sample.length) {
+        const shown = pl.sample.slice(0, 12);
+        playerChips = '<div class="player-list">' +
+          shown.map(p => '<span class="player-chip">' + esc(p.name || p) + '</span>').join('') +
+          (pl.sample.length > 12 ? '<span class="player-chip">+ ' + (pl.sample.length - 12) + ' …</span>' : '') +
+          '</div>';
+      }
+
+      const typeBadge = data.type ? data.type : '';
+      const queryTime = new Date().toLocaleString('zh-CN', { hour12: false });
+
+      // 状态图片（MineBBS status_img 生成）
+      const imgUrlBase = 'https://motd.minebbs.com/api/status_img?ip=' + encodeURIComponent(q.ip) +
+        (q.port ? '&port=' + encodeURIComponent(q.port) : '') + '&stype=' + q.stype;
+      const statusImgBlock =
+        '<div class="statusimg-block">' +
+          '<div class="img-actions">' +
+            '<span>状态卡片图</span>' +
+            '<select class="theme-select">' +
+              '<option value="simple">simple</option>' +
+              '<option value="dark_tech">dark_tech</option>' +
+              '<option value="glass_card" selected>glass_card</option>' +
+            '</select>' +
+          '</div>' +
+          '<img class="status-img" alt="服务器状态卡片图" loading="lazy">' +
+        '</div>';
+
+      card.innerHTML =
+        iconHtml +
+        '<div class="result-info">' +
+          statusLine +
+          motdBlock +
+          '<div class="fmeta">版本：<b>' + esc(verText) + '</b>' + esc(protoText) + '</div>' +
+          '<div class="fmeta">玩家：<b>' + onlineN + ' / ' + maxN + '</b>' + playerChips + '</div>' +
+          '<div class="fmeta">查询时间：<b>' + queryTime + '</b></div>' +
+          '<div class="tags">' +
+            (typeBadge ? '<span class="badge">' + esc(typeBadge) + '</span>' : '') +
+            '<span class="badge">' + latency + ' ms</span>' +
+          '</div>' +
+          statusImgBlock +
+        '</div>';
+
+      resultEl.appendChild(card);
+
+      // 状态图加载与主题切换
+      const sel = card.querySelector('.theme-select');
+      const simg = card.querySelector('.status-img');
+      if (sel && simg) {
+        const load = () => { simg.src = imgUrlBase + '&theme=' + sel.value + '&t=' + Date.now(); };
+        sel.addEventListener('change', load);
+        load();
+      }
+
+      // 复制纯文本 MOTD
+      const copyBtn = card.querySelector('.copy-motd');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(data.pureMotd || '');
+            copyBtn.textContent = '已复制 ✓';
+            setTimeout(() => { copyBtn.textContent = '复制纯文本 MOTD'; }, 1500);
+          } catch (e) {
+            copyBtn.textContent = '复制失败';
+          }
+        });
+      }
+    }
+
+    function renderError(host, msg) {
+      const card = document.createElement('div');
+      card.className = 'result-card glass offline-card';
+      card.innerHTML =
+        '<div class="big">' + esc(host) + ' 无法连接</div>' +
+        '<div>' + esc(msg || '查询失败，请检查地址后重试') + '</div>';
+      resultEl.appendChild(card);
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    // ===== 事件 =====
+    queryBtn.addEventListener('click', query);
+    hostInput.addEventListener('keydown', e => { if (e.key === 'Enter') query(); });
+
+    renderHistory();
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

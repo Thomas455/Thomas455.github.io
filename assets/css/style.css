@@ -174,6 +174,29 @@ a:hover {
   color: var(--accent);
 }
 
+/* ============ 返回按钮（工具页） ============ */
+.back-link {
+  display: inline-block;
+  margin-top: 24px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(31, 35, 40, 0.05);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.back-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  text-decoration: none;
+}
+
 /* ============ 分区 ============ */
 .section {
   padding: 64px 0;
