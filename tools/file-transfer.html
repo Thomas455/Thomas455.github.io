@@ -312,8 +312,6 @@
           setStatus('信令服务器连接失败，请检查网络后刷新重试', 'err');
         } else if (err.type === 'browser-incompatible') {
           setStatus('当前浏览器不支持 WebRTC，请用 Chrome / Edge', 'err');
-        } else {
-          console.log('Peer error:', err.type, err);
         }
       });
       peer.on('disconnected', () => {

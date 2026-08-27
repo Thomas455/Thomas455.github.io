@@ -229,6 +229,12 @@
 
     .kb-stats b { color: var(--text); }
 
+    .kb-note {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
     .recent {
       font-size: 0.82rem;
       color: var(--muted);
@@ -357,11 +363,12 @@
         <section class="kb-section">
           <h3>键盘测试</h3>
           <div class="stuck-bar" id="stuckBar"></div>
-          <div class="kb-stats">
-            <span>总按键：<b id="kbTotal">0</b> 次</span>
-            <span>已触发键：<b id="kbDistinct">0</b> 个</span>
-            <span>卡键警告：红色闪烁</span>
-          </div>
+        <div class="kb-stats">
+          <span>总按键：<b id="kbTotal">0</b> 次</span>
+          <span>已触发键：<b id="kbDistinct">0</b> 个</span>
+          <span>卡键警告：红色闪烁</span>
+        </div>
+        <div class="kb-note">提示：Copilot 键在 Chromium 中按右 Win（MetaRight）上报，按下右 Win 位置键会同时点亮 Copilot 键帽；按 Copilot 键若触发系统 Copilot 窗口属系统行为，网页无法拦截。</div>
           <div class="kb-wrap">
             <div class="kb-board">
               <div class="kb-main" id="kbMain"></div>
@@ -391,7 +398,6 @@
               </div>
             <div class="m-line">滚轮：上 <b id="mwUp">0</b> · 下 <b id="mwDn">0</b></div>
             <div class="m-line">移入 <b id="mMove">0</b> 次　位置：<b id="mPos">-</b></div>
-            <div class="m-line" style="font-size:0.7rem;color:#94a3b8" id="mEventLog">事件日志：—</div>
             </div>
           </section>
 
@@ -425,7 +431,7 @@
       [['Tab', 1.5], ['KeyQ', 1], ['KeyW', 1], ['KeyE', 1], ['KeyR', 1], ['KeyT', 1], ['KeyY', 1], ['KeyU', 1], ['KeyI', 1], ['KeyO', 1], ['KeyP', 1], ['BracketLeft', 1], ['BracketRight', 1], ['Backslash', 1]],
       [['CapsLock', 1.75], ['KeyA', 1], ['KeyS', 1], ['KeyD', 1], ['KeyF', 1], ['KeyG', 1], ['KeyH', 1], ['KeyJ', 1], ['KeyK', 1], ['KeyL', 1], ['Semicolon', 1], ['Quote', 1], ['Enter', 2.25]],
       [['ShiftLeft', 2.25], ['KeyZ', 1], ['KeyX', 1], ['KeyC', 1], ['KeyV', 1], ['KeyB', 1], ['KeyN', 1], ['KeyM', 1], ['Comma', 1], ['Period', 1], ['Slash', 1], ['ShiftRight', 2.75]],
-      [['ControlLeft', 1.25], ['MetaLeft', 1.25], ['AltLeft', 1.25], ['Space', 6.25], ['AltRight', 1.25], ['MetaRight', 1.25], ['ContextMenu', 1.25], ['ControlRight', 1.25]]
+      [['ControlLeft', 1.25], ['MetaLeft', 1.25], ['AltLeft', 1.25], ['Space', 6.25], ['AltRight', 1.25], ['Copilot', 1.25], ['ContextMenu', 1.25], ['ControlRight', 1.25]]
     ];
 
     // 右侧编辑区（3 列）
@@ -456,7 +462,7 @@
       CapsLock: '⇪', Semicolon: ';', Quote: "'", Enter: '⏎',
       ShiftLeft: '⇧', Comma: ',', Period: '.', Slash: '/', ShiftRight: '⇧',
       ControlLeft: 'Ctrl', MetaLeft: '⊞', AltLeft: 'Alt', Space: '␣',
-      AltRight: 'Alt', MetaRight: '⊞', ContextMenu: '☰', ControlRight: 'Ctrl',
+      AltRight: 'Alt', MetaRight: '⊞', ContextMenu: '☰', ControlRight: 'Ctrl', Copilot: 'Copilot',
       Escape: 'Esc', ArrowUp: '↑', ArrowLeft: '←', ArrowDown: '↓', ArrowRight: '→',
       PrintScreen: 'PrtSc', ScrollLock: 'ScrLk', Pause: 'Pause', NumLock: 'Num',
       NumpadDivide: '/', NumpadMultiply: '*', NumpadSubtract: '-', NumpadAdd: '+',
@@ -591,6 +597,15 @@
         pressedTimers[code] = setTimeout(() => markStuck(code), 2000);
       }
       syncModifiers(e.shiftKey, e.ctrlKey, e.altKey, e.metaKey);
+      // Copilot 键：Chromium 按 MetaRight 上报（与右 Win 键事件相同，无法区分），一并点亮 Copilot 键帽
+      if (code === 'MetaRight' && keyEls['Copilot']) {
+        keyEls['Copilot'].classList.add('on', 'used');
+        keyCounts['Copilot']++;
+        kbTotal++;
+        kbUpdate();
+        clearTimeout(pressedTimers['Copilot']);
+        pressedTimers['Copilot'] = setTimeout(() => markStuck('Copilot'), 2000);
+      }
     });
 
     window.addEventListener('keyup', e => {
@@ -600,6 +615,12 @@
       if (keyEls[code]) {
         keyEls[code].classList.remove('on', 'stuck');
         document.getElementById('stuckBar').textContent = '';
+      }
+      // Copilot 键帽熄灭
+      if (code === 'MetaRight' && keyEls['Copilot']) {
+        clearTimeout(pressedTimers['Copilot']);
+        delete pressedTimers['Copilot'];
+        keyEls['Copilot'].classList.remove('on', 'stuck');
       }
       syncModifiers(e.shiftKey, e.ctrlKey, e.altKey, e.metaKey);
     });
@@ -649,16 +670,6 @@
     window.addEventListener('auxclick', e => { if (e.button >= 2) e.preventDefault(); }, true);
     window.addEventListener('contextmenu', e => e.preventDefault(), true);
 
-    // 调试日志：显示最近鼠标事件，用于排查侧键是否到达页面
-    function logMouseEvent(type, button) {
-      const el = document.getElementById('mEventLog');
-      if (!el) return;
-      const t = new Date().toLocaleTimeString('zh-CN', { hour12: false });
-      el.textContent = '事件日志：' + type + ' button=' + button + ' @' + t + ' | ' + el.textContent.slice(9, 150);
-    }
-    window.addEventListener('mousedown', e => logMouseEvent('mousedown', e.button), true);
-    window.addEventListener('auxclick', e => logMouseEvent('auxclick', e.button), true);
-    window.addEventListener('mouseup', e => logMouseEvent('mouseup', e.button), true);
 
     mouseArea.addEventListener('mousedown', e => {
       // 左右键在测试区内计数（侧键已由全局处理）
@@ -718,7 +729,8 @@
         hidDevice.addEventListener('inputreport', e => {
           const hex = Array.from(e.data.buffer ? new Uint8Array(e.data.buffer) : e.data)
             .map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
-          hidData.textContent = '报告 ' + e.reportId + '：' + hex + '\n' + hidData.textContent;
+          const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+          hidData.textContent = '[' + ts + '] 报告 ' + e.reportId + '：' + hex + '\n' + hidData.textContent;
           hidData.scrollTop = 0;
         });
       } catch (err) {
