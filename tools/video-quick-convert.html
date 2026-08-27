@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>视频快速转换 · Thomas455</title>
+  <meta name="description" content="轻量快速视频转换：MP4/WebM/MOV 等转 WebM 或 MP4，浏览器原生硬件编码，即开即用。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero {
+      padding: 56px 0 24px;
+      text-align: center;
+    }
+
+    .tool-hero h1 { font-size: 1.8rem; margin-bottom: 8px; }
+
+    .dropzone {
+      border: 2px dashed rgba(37, 99, 235, 0.35);
+      border-radius: 16px;
+      padding: 40px 20px;
+      text-align: center;
+      background: rgba(37, 99, 235, 0.03);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.08);
+    }
+
+    .dz-main { font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; }
+    .dz-sub { font-size: 0.85rem; color: var(--muted); }
+
+    .video-info {
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      border-radius: 12px;
+      background: rgba(37, 99, 235, 0.06);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .video-info .vi-line { margin: 2px 0; }
+    .video-info b { color: var(--text); font-weight: 600; }
+    .vi-ph { color: var(--muted); opacity: 0.65; }
+
+    .param-card {
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+    }
+
+    .param-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .param label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .param select,
+    .param input[type="number"] {
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 0.9rem;
+    }
+
+    .param select { min-width: 160px; }
+    .param input[type="number"] { width: 100px; }
+
+    .progress {
+      height: 8px;
+      background: rgba(37, 99, 235, 0.1);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .progress .bar {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.15s;
+    }
+
+    .pct {
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+
+    .result { text-align: center; display: none; }
+
+    .result video {
+      max-width: 100%;
+      max-height: 320px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: #fff;
+      margin-bottom: 10px;
+    }
+
+    .result .meta { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
+    .result .meta b { color: var(--text); }
+
+    .warn {
+      background: rgba(180, 83, 9, 0.08);
+      border: 1px solid rgba(180, 83, 9, 0.2);
+      color: #b45309;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>视频 <span class="accent">快速转换</span></h1>
+      <p class="muted">浏览器原生硬件编码，即开即用：MP4 / WebM / MOV / OGG 等 → WebM 或 MP4。</p>
+    </section>
+
+    <div class="warn">⚠️ 快速版输出仅支持 <b>WebM</b> 和 <b>MP4</b>（浏览器硬件编码能力有限）。需要更多格式请用「视频格式转换（完整版）」。建议 Chrome / Edge。</div>
+
+    <div class="dropzone" id="dropzone">
+      <div class="dz-main">拖入视频文件到这里，或点击选择</div>
+      <div class="dz-sub">支持 MP4 / WebM / MOV / OGG 等浏览器可解码格式</div>
+      <input type="file" id="fileInput" accept="video/*" style="display:none">
+    </div>
+
+    <div class="video-info" id="videoInfo">
+      <div class="vi-line">文件：<span class="vi-ph" id="viName">尚未选择视频</span></div>
+      <div class="vi-line">
+        时长：<span class="vi-ph" id="viDur">—</span>　|　分辨率：<span class="vi-ph" id="viRes">—</span>　|　大小：<span class="vi-ph" id="viSize">—</span>
+      </div>
+    </div>
+
+    <div class="param-card">
+      <div class="param-row">
+        <div class="param">
+          <label>输出格式</label>
+          <select id="fmtSel">
+            <option value="webm">WebM（VP9，兼容好）</option>
+            <option value="mp4">MP4（H.264，通用性最好）</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>高度（px，留空=原尺寸）</label>
+          <input type="number" id="mWidth" placeholder="如 720">
+        </div>
+        <div class="param">
+          <label>帧率（fps，留空=原帧率）</label>
+          <input type="number" id="mFps" placeholder="如 30" min="1" max="120">
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:12px">
+      <button class="btn" id="goBtn" disabled>开始转换</button>
+    </div>
+
+    <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+    <div class="pct" id="pct">选择视频后开始转换</div>
+
+    <div class="result" id="result">
+      <video id="preview" controls style="display:none"></video>
+      <div class="meta" id="resultMeta"></div>
+      <button class="btn" id="dlBtn">下载文件</button>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const goBtn = document.getElementById('goBtn');
+    const bar = document.getElementById('bar');
+    const pctEl = document.getElementById('pct');
+    const resultEl = document.getElementById('result');
+    const preview = document.getElementById('preview');
+    const resultMeta = document.getElementById('resultMeta');
+    const dlBtn = document.getElementById('dlBtn');
+
+    let selFile = null;
+    let outBlob = null;
+
+    function fmtSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1073741824) return (bytes / 1048576).toFixed(2) + ' MB';
+      return (bytes / 1073741824).toFixed(2) + ' GB';
+    }
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => { handleFile(fileInput.files[0]); fileInput.value = ''; });
+
+    function handleFile(file) {
+      if (!file || !file.type.startsWith('video/')) { alert('请选择视频文件'); return; }
+      selFile = file;
+      resultEl.style.display = 'none';
+      goBtn.disabled = false;
+      document.getElementById('viName').textContent = file.name;
+      document.getElementById('viSize').textContent = fmtSize(file.size);
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.src = URL.createObjectURL(file);
+      v.onloadedmetadata = () => {
+        const m = Math.floor(v.duration / 60), s = Math.round(v.duration % 60);
+        document.getElementById('viDur').textContent = m + ' 分 ' + s + ' 秒';
+        document.getElementById('viRes').textContent = v.videoWidth + ' × ' + v.videoHeight;
+      };
+    }
+
+    // ===== 转换（播放 + captureStream + MediaRecorder） =====
+    function getMime(fmt) {
+      const candidates = fmt === 'mp4'
+        ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E', 'video/mp4']
+        : ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+      return candidates.find(c => MediaRecorder.isTypeSupported(c)) || '';
+    }
+
+    goBtn.addEventListener('click', async () => {
+      if (!selFile) return;
+      const fmt = document.getElementById('fmtSel').value;
+      const mime = getMime(fmt);
+      if (!mime) {
+        alert('当前浏览器不支持 ' + fmt.toUpperCase() + ' 录制，请换 Chrome / Edge 或改用其他格式');
+        return;
+      }
+      goBtn.disabled = true;
+      resultEl.style.display = 'none';
+      bar.style.width = '0%';
+      pctEl.textContent = '准备中…';
+
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.src = URL.createObjectURL(selFile);
+      await new Promise((resolve, reject) => {
+        video.onloadedmetadata = resolve;
+        video.onerror = () => reject(new Error('视频解码失败'));
+      });
+
+      // 缩放：canvas 画视频帧；不缩放直接 captureStream
+      const height = parseInt(document.getElementById('mWidth').value, 10);
+      const fps = parseInt(document.getElementById('mFps').value, 10) || 30;
+      const needScale = height && height > 0 && height < video.videoHeight;
+
+      let stream;
+      try {
+        if (needScale) {
+          const w = Math.round(video.videoWidth * height / video.videoHeight / 2) * 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(2, w);
+          canvas.height = Math.max(2, height);
+          const ctx = canvas.getContext('2d');
+          const drawLoop = setInterval(() => {
+            if (video.currentTime > 0 && !video.paused) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          }, 1000 / Math.max(fps, 10));
+          stream = canvas.captureStream(fps);
+          const audioTracks = video.captureStream ? video.captureStream().getAudioTracks() : [];
+          if (audioTracks.length) stream.addTrack(audioTracks[0]);
+          // 录制结束后清理
+          video.addEventListener('ended', () => clearInterval(drawLoop), { once: true });
+        } else {
+          stream = video.captureStream(fps);
+        }
+      } catch (e) {
+        alert('无法捕获视频流：' + e.message);
+        goBtn.disabled = false;
+        return;
+      }
+
+      const recorder = new MediaRecorder(stream, { mimeType: mime });
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        outBlob = new Blob(chunks, { type: mime });
+        preview.src = URL.createObjectURL(outBlob);
+        preview.style.display = '';
+        resultMeta.innerHTML = '大小 <b>' + fmtSize(outBlob.size) + '</b> · 格式 ' + fmt.toUpperCase();
+        resultEl.style.display = 'block';
+        bar.style.width = '100%';
+        pctEl.textContent = '✓ 转换完成';
+        goBtn.disabled = false;
+      };
+      recorder.onerror = () => {
+        pctEl.textContent = '✗ 录制失败';
+        goBtn.disabled = false;
+      };
+
+      // 播放并录制（真实速度，进度 = currentTime / duration）
+      const dur = video.duration;
+      const tick = setInterval(() => {
+        const p = Math.min(100, (video.currentTime / dur) * 100);
+        bar.style.width = p + '%';
+        pctEl.textContent = '转换中 ' + Math.round(p) + '%（实时转码，与视频时长同步）';
+      }, 200);
+
+      recorder.start(500);
+      await video.play();
+      await new Promise(resolve => {
+        video.onended = () => { clearInterval(tick); resolve(); };
+        video.onerror = () => { clearInterval(tick); resolve(); };
+      });
+      await new Promise(r => setTimeout(r, 300));
+      recorder.stop();
+    });
+
+    dlBtn.addEventListener('click', () => {
+      if (!outBlob) return;
+      const fmt = document.getElementById('fmtSel').value;
+      const base = (selFile.name.replace(/\.[^.]+$/, '') || 'video');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(outBlob);
+      a.download = base + '-converted.' + fmt;
+      a.click();
+    });
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
