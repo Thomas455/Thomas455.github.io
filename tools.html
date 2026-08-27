@@ -30,6 +30,53 @@
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
+
+    .recent-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .recent-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-right: 4px;
+    }
+
+    .recent-chip {
+      display: inline-block;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.06);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      color: var(--accent);
+      transition: background 0.15s;
+    }
+
+    .recent-chip:hover {
+      background: rgba(37, 99, 235, 0.14);
+      text-decoration: none;
+    }
+
+    .recent-clear {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      border-radius: 999px;
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .recent-clear:hover {
+      border-color: #dc2626;
+      color: #dc2626;
+    }
   </style>
 </head>
 <body>
@@ -58,6 +105,7 @@
     <section class="section">
       <div class="container">
         <h2>工具列表</h2>
+        <div class="recent-bar" id="recentBar" style="display:none"></div>
         <input class="tool-search" id="toolSearch" type="text" placeholder="搜索工具名称或说明…" autocomplete="off">
         <div class="grid" id="toolGrid">
 
@@ -168,6 +216,11 @@
         card.style.display = (!q || text.includes(q)) ? '' : 'none';
       });
     });
+
+  </script>
+  <script src="assets/js/tools-recent.js"></script>
+  <script>
+    if (window.ToolsRecent) ToolsRecent.render(document.getElementById('recentBar'));
   </script>
 </body>
 </html>
