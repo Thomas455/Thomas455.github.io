@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>渔力全开存档工具 · Thomas455</title>
+  <meta name="description" content="How to Fish（渔力全开）存档编辑：读取 你的存档名.txt / local.txt，编辑物品、数值、外观，单行 JSON 写回，自动备份。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero { padding: 56px 0 24px; text-align: center; }
+    .tool-hero h1 { font-size: 1.8rem; margin-bottom: 8px; }
+    .muted2 { font-size: 0.85rem; color: var(--muted); }
+
+    .dropzone {
+      border: 2px dashed rgba(37, 99, 235, 0.35);
+      border-radius: 16px;
+      padding: 32px 20px;
+      text-align: center;
+      background: rgba(37, 99, 235, 0.03);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 12px;
+    }
+    .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(37, 99, 235, 0.08); }
+    .dz-main { font-size: 1.02rem; font-weight: 600; margin-bottom: 4px; }
+    .dz-sub { font-size: 0.82rem; color: var(--muted); }
+
+    .op-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 14px; }
+
+    .tool-card2 {
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+    }
+    .player-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .player-head h3 { margin-bottom: 0; }
+
+    .mp-wrap {
+      width: 300px;
+      min-height: 30px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .mp-note {
+      padding: 8px 10px;
+      background: rgba(100, 116, 139, 0.08);
+      border-radius: 8px;
+      border: 1px dashed rgba(100, 116, 139, 0.3);
+    }
+
+    /* ===== Steam 玩家信息卡（头像/昵称/状态，数据来自自建 Worker） ===== */
+    .sp-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #1b2838;
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.1);
+      min-width: 200px;
+    }
+
+    .sp-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid #57cbde;
+      object-fit: cover;
+      display: block;
+    }
+
+    .sp-avatar-ph {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #23384e;
+      color: #8fb5d5;
+      font-weight: 700;
+      border-color: #898989;
+    }
+
+    .sp-info { min-width: 0; }
+
+    .sp-name {
+      font-weight: 700;
+      font-size: 13px;
+      color: #c6d4df;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+
+    .sp-status { font-size: 11px; margin-top: 2px; }
+
+    /* 请求失败/无数据时的灰色占位骨架 */
+    .sp-card-ph { background: #e2e8f0; border-color: rgba(15, 23, 42, 0.06); box-shadow: none; }
+    .sp-card-ph .sp-avatar { background: #cbd5e1; border-color: #cbd5e1; }
+    .sp-card-ph .sp-name-ph {
+      width: 84px; height: 12px; border-radius: 4px; background: #cbd5e1;
+    }
+    .sp-card-ph .sp-status-ph {
+      width: 52px; height: 10px; border-radius: 4px; background: #cbd5e1; margin-top: 6px;
+    }
+    .sp-loading { font-size: 10px; color: #64748b; margin-top: 5px; white-space: nowrap; }
+
+    .tool-card2 h3 { font-size: 1rem; margin-bottom: 10px; }
+    .tool-card2 h4 { font-size: 0.88rem; margin: 14px 0 8px; color: var(--muted); }
+
+    /* 玩家卡加宽：抵消容器左右 padding，紧贴容器两边（上方卡片不变） */
+    .player-card {
+      margin-left: -24px;
+      margin-right: -24px;
+      padding-left: 28px;
+      padding-right: 28px;
+    }
+
+    .kv { font-size: 0.88rem; margin: 3px 0; }
+    .kv b { color: var(--text); }
+    .kv .val { font-weight: 600; color: var(--accent); }
+    .kv .bad { color: #dc2626; font-weight: 700; }
+    .kv .warn2 { color: #b45309; }
+
+    .warn-box {
+      background: rgba(180, 83, 9, 0.08);
+      border: 1px solid rgba(180, 83, 9, 0.2);
+      color: #b45309;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      margin-bottom: 14px;
+    }
+    .ok-box {
+      background: rgba(5, 150, 105, 0.08);
+      border: 1px solid rgba(5, 150, 105, 0.2);
+      color: #059669;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      margin-bottom: 14px;
+    }
+
+    table.items { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    table.items th, table.items td { border-bottom: 1px solid rgba(100, 116, 139, 0.15); padding: 6px 4px; text-align: left; vertical-align: middle; }
+    table.items th { color: var(--muted); font-weight: 700; white-space: nowrap; }
+    table.items input[type="number"], table.items select {
+      width: 100%; min-width: 56px; padding: 4px 6px; border: 1px solid rgba(255,255,255,0.8);
+      border-radius: 6px; background: rgba(255,255,255,0.6); color: var(--text); font-size: 0.82rem; outline: none;
+    }
+    /* 皮肤(第3列)/锋利度(第4列)窄列 */
+    table.items th:nth-child(3), table.items td:nth-child(3),
+    table.items th:nth-child(4), table.items td:nth-child(4) {
+      width: 58px; min-width: 58px;
+    }
+    /* 物品下拉（第2列）加宽 */
+    table.items td:nth-child(2) select {
+      min-width: 170px;
+    }
+    table.items .chk { width: 18px; height: 18px; accent-color: var(--accent); }
+    table.items .del { padding: 2px 8px; font-size: 0.75rem; border-radius: 6px; border: 1px solid rgba(220,38,38,0.3); background: transparent; color: #dc2626; cursor: pointer; }
+    table.items .del:hover { background: rgba(220,38,38,0.1); }
+
+    .bait-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    @media (max-width: 600px) { .bait-grid { grid-template-columns: 1fr; } }
+    .bait-item {
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(37, 99, 235, 0.04);
+      border: 1px solid rgba(37, 99, 235, 0.12);
+    }
+    .bait-item .bait-name { flex: 1; min-width: 0; }
+    .bait-item .bait-name b { display: block; font-size: 0.82rem; }
+    .bait-item .bait-name .en { font-size: 0.68rem; color: var(--muted); }
+    .bait-item .tag { font-size: 0.62rem; padding: 1px 6px; border-radius: 999px; color: #fff; flex-shrink: 0; }
+    .bait-item input { width: 64px; padding: 4px 6px; border: 1px solid rgba(255,255,255,0.8); border-radius: 6px; background: rgba(255,255,255,0.6); color: var(--text); outline: none; }
+
+    .scroll-box { max-height: 240px; overflow-y: auto; }
+
+    .btn-sm { padding: 6px 14px; font-size: 0.82rem; border-radius: 999px; }
+    .info-line { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+    .raw-box { max-height: 160px; overflow: auto; font-family: Consolas, monospace; font-size: 0.72rem; background: rgba(15,23,42,0.04); border-radius: 8px; padding: 10px; word-break: break-all; white-space: pre-wrap; display: none; }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>渔力全开 <span class="accent">存档工具</span></h1>
+      <p class="muted2">读取 / 编辑 How to Fish 存档（<b>你的存档名.txt</b> 进度档、<b>local.txt</b> 外观档），单行紧凑 JSON 写回，修改前自动备份。</p>
+    </section>
+
+    <div class="ok-box">💡 <b>修改存档后需要完全退出游戏（大退）才可生效</b>——游戏运行时内存里的进度会在退出时覆盖回存档文件。</div>
+
+    <div class="warn-box" id="pathHint">
+      存档位置：<code>%USERPROFILE%\AppData\LocalLow\Dazed Games\How to Fish\Saves\</code>（游戏只读取 <b>你的存档名.txt</b>（如 WwW.txt）和 <b>local.txt</b>，其余后缀文件不会被读取）
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <div class="dz-main">拖入存档文件（你的存档名.txt / local.txt），或点击选择</div>
+      <div class="dz-sub">自动识别进度档 / 外观档</div>
+      <input type="file" id="fileInput" accept=".txt,application/json" style="display:none">
+    </div>
+
+    <div class="op-row">
+      <button class="btn" id="openPickBtn">打开存档（可写回原文件）</button>
+      <button class="btn btn-outline" id="backupBtn" disabled>下载备份</button>
+      <button class="btn" id="saveBtn" disabled>保存修改</button>
+    </div>
+
+    <div class="op-row">
+      <button class="btn btn-outline" id="scanDirBtn">📁 扫描存档目录</button>
+      <button class="btn btn-outline" id="rescanBtn" style="display:none">重新授权目录</button>
+    </div>
+
+    <div class="tool-card2" id="saveList" style="display:none">
+      <h3>存档目录（Saves）</h3>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">
+        在弹窗中导航到：<code>%USERPROFILE%\AppData\LocalLow\Dazed Games\How to Fish\Saves</code>　·　点击「导入编辑」一键载入（可直接写回该文件）
+      </div>
+      <table class="items">
+        <thead><tr><th>文件名</th><th>大小</th><th>修改时间</th><th>类型</th><th>操作</th></tr></thead>
+        <tbody id="saveListBody"></tbody>
+      </table>
+      <button class="btn btn-outline btn-sm" id="refreshDirBtn" style="margin-top:10px">刷新列表</button>
+    </div>
+
+    <div id="statusBox" style="display:none"></div>
+
+    <div id="editorArea" style="display:none">
+
+      <!-- Steam 玩家信息说明 -->
+      <div class="tool-card2">
+        <h3>Steam 玩家信息</h3>
+        <div class="info-line">
+          <b>关于 Steam 玩家信息的说明</b>⚠️ 玩家的 <b>SteamID</b> 将发送至网站开发者（Thomas455）自建的云服务（腾讯云，Cloudflare）以查询玩家<b>头像、昵称</b>等公开个人信息。数据为 Steam 公开信息，仅用于展示；获取失败时显示灰色占位。
+        </div>
+      </div>
+
+      <!-- 概要信息 -->
+      <div class="tool-card2">
+        <h3>存档信息</h3>
+        <div id="infoBox"></div>
+      </div>
+
+      <!-- 危险字段警告 -->
+      <div class="warn-box" id="derivedWarn" style="display:none"></div>
+
+      <!-- WwW 编辑面板：每个玩家独立区块 -->
+      <div id="wwwPanel" style="display:none">
+        <div id="playersArea"></div>
+        <div class="info-line">物品实例属性（ItemID / Sight / ExtendedMag 等）可持久修改；物品名按 ItemID 表（0–85）映射。</div>
+      </div>
+
+      <!-- local 编辑面板 -->
+      <div id="localPanel" style="display:none">
+        <div class="tool-card2">
+          <h3>外观索引与设置</h3>
+          <div id="localFields"></div>
+        </div>
+
+        <div class="tool-card2">
+          <h3>生物图鉴（CreaturesToList）</h3>
+          <div class="scroll-box" id="bestiaryBox"></div>
+        </div>
+
+        <div class="tool-card2">
+          <h3>物品皮肤（UnlockedItemSkins）</h3>
+          <div id="skinBox"></div>
+        </div>
+
+        <div class="tool-card2">
+          <h3>一键解锁</h3>
+          <div class="op-row" style="justify-content:flex-start">
+            <button class="btn btn-outline btn-sm" id="unlockSkinsBtn">全部船皮肤</button>
+            <button class="btn btn-outline btn-sm" id="unlockBestiaryBtn">图鉴全收集</button>
+            <button class="btn btn-outline btn-sm" id="unlockSeenBtn">外观全见过</button>
+          </div>
+          <div class="info-line">local.txt 独立于进度，游戏一般不重算，可持久修改。</div>
+        </div>
+      </div>
+
+      <div class="op-row">
+        <button class="btn" id="saveBtn2" disabled>保存修改</button>
+        <button class="btn btn-outline" id="backupBtn2" disabled>下载备份</button>
+      </div>
+
+      <div class="raw-box" id="rawBox"></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // ================= 数据字典 =================
+    const ITEM_NAMES = {
+      0:'神仙鱼',1:'鮟鱇鱼',2:'鲈鱼',3:'水滴鱼',4:'Bluegill',5:'信天翁',6:'蓝鲨',7:'弓头鲸',8:'The Old Pike',9:'巨食人鱼',
+      10:'哥布林鲨',11:'变异弓头鲸',12:'河豚',13:'蜘蛛蟹',14:'翻车鱼',15:'金枪鱼',16:'Bowlfish',17:'鲶鱼',18:'蛤蜊',19:'小丑鱼',
+      20:'鳕鱼',21:'棕蟹',22:'Dripper',23:'鳗鱼',24:'飞鱼',25:'Footsnail',26:'雀鳝',27:'虾虎鱼',28:'金鱼',29:'比目鱼',
+      30:'（空缺）',31:'（空缺）',32:'龙虾',33:'鲭鱼',34:'颌针鱼',35:'皇带鱼',36:'鹦鹉鱼',37:'河鲈',38:'狗鱼',39:'食人鱼',
+      40:'红鲷',41:'三文鱼',42:'海胆',43:'海鸥',44:'海马',45:'Sengarat',46:'虾',47:'石头鱼',48:'Superdwarf Fish',49:'虎鱼',
+      50:'扳机鱼',51:'Voxelfish',52:'黄箱鲀',53:'（空缺）',54:'突击步枪',55:'Badball',56:'啤酒',57:'指虎',58:'指虎(Debug)',59:'蟹钓竿',
+      60:'炸药',61:'钓竿',62:'Disc',63:'刀',64:'刀(Debug)',65:'雷达',66:'手枪',67:'Radio',68:'霰弹枪',69:'冲锋枪SMG',
+      70:'狙击步枪',71:'雪球',72:'雪球2',73:'雪球3',74:'信天翁头',75:'巨食人鱼骨架',76:'河豚鳍',77:'蜘蛛蟹壳',78:'鲸鱼鳍',79:'岩蟹',
+      80:'（空缺）',81:'（空缺）',82:'Bing Bong 皮球',83:'Bing Bong 皮球',84:'肉块(1000)',85:'肉块(25)'
+    };
+    const ITEM_IDS = Object.keys(ITEM_NAMES).filter(id => !ITEM_NAMES[id].includes('空缺')).map(Number);
+
+    const SIGHT_NAMES = { 0: '无', 1: '红点', 2: '高倍镜' };
+    const AMMO_NAMES = { 0: '无', 4: '手枪弹', 5: '狙击弹', 6: 'SMG弹', 7: '狙击弹2' };
+    const BARREL_NAMES = { 0: '没有', 1: '制退器', 2: '消音器' };
+
+    // 物品类别：枪械可用瞄准镜/枪口/扩容/激光；枪+刀+钓竿可用皮肤；生物可编辑生物参数
+    const GUN_IDS = [54, 66, 68, 69, 70]; // 突击步枪/手枪/霰弹枪/SMG/狙击
+    const SKIN_IDS = [54, 57, 58, 59, 61, 63, 64, 66, 68, 69, 70]; // 枪+指虎+钓竿+刀
+    function isGun(id) { return GUN_IDS.includes(id); }
+    function canSkin(id) { return SKIN_IDS.includes(id); }
+    // 生物/动物：ItemID 0–52（鱼类/生物）+ 79 岩蟹 + 82/83 Bing Bong 皮球
+    function isCreature(id) {
+      return (id >= 0 && id <= 52) || id === 79 || id === 82 || id === 83;
+    }
+
+    // 鱼饵 16 种（推断顺序，来自 Dexerto 等攻略交叉验证；游戏内实际顺序待确认）
+    const BAIT_NAMES = [
+      ['Free Lure', '免费鱼饵', '常规'], ['Hot Dog', '热狗', '常规'],
+      ['Beginner Lure', '初级鱼饵', '常规'], ['Standard Lure', '标准鱼饵', '常规'],
+      ['Professional Lure', '专业鱼饵', '常规'], ['Scientific Lure', '科学鱼饵', '常规'],
+      ['Beginner Boss Lure', '初级BOSS鱼饵', 'BOSS'], ['Standard Boss Lure', '标准BOSS鱼饵', 'BOSS'],
+      ['Professional Boss Lure', '专业BOSS鱼饵', 'BOSS'], ['Scientific Boss Lure', '科学BOSS鱼饵', 'BOSS'],
+      ['Leech', '水蛭', '任务'], ['Modified Leech', '改造水蛭', '任务'],
+      ['Carrot', '胡萝卜', '任务'], ['Empty Beer Can', '空啤酒罐', '任务'],
+      ['Fish Bucket', '鱼桶(鲸饵)', '任务'], ['Tuna Bait', '金枪鱼饵', '任务']
+    ];
+    const BAIT_CLASS_COLOR = { '常规': '#2563eb', 'BOSS': '#b45309', '任务': '#059669' };
+
+    // 外观可选总数（Seen 数组长度）
+    const HAT_COUNT = 16, OUTFIT_COUNT = 16, ACC_COUNT = 9;
+
+    const ISLAND_NAMES = { 0: '灯塔岛', 1: '森林岛', 2: '沙漠岛', 3: '岩石岛', 4: '火山岛' };
+
+    function fmtTicks(ticks) {
+      // ticks 可能是字符串（精度保护后）或数字，用 BigInt 精确计算
+      const unix = Number((BigInt(ticks) - 621355968000000000n) / 10000000n);
+      return new Date(unix * 1000).toLocaleString('zh-CN', { hour12: false });
+    }
+    function fmtPlaytime(sec) {
+      sec = Math.round(Number(sec) || 0);
+      const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+      return (h ? h + ' 小时 ' : '') + m + ' 分 ' + s + ' 秒';
+    }
+    function fmtBytes(n) {
+      if (n < 1024) return n + ' B';
+      return (n / 1024).toFixed(1) + ' KB';
+    }
+    function download(name, content, type) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([content], { type: type || 'text/plain' }));
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // ================= 状态 =================
+    let data = null;          // 当前编辑对象
+    let rawJson = '';         // 载入时的原始单行 JSON
+    let fileName = '';
+    let isLocal = false;      // local.txt 类型
+    let fileHandle = null;    // File System Access 句柄（可写回）
+
+    const $ = id => document.getElementById(id);
+
+    // ================= 载入 =================
+    $('dropzone').addEventListener('click', () => $('fileInput').click());
+    $('dropzone').addEventListener('dragover', e => { e.preventDefault(); $('dropzone').classList.add('dragover'); });
+    $('dropzone').addEventListener('dragleave', () => $('dropzone').classList.remove('dragover'));
+    $('dropzone').addEventListener('drop', e => {
+      e.preventDefault();
+      $('dropzone').classList.remove('dragover');
+      loadFile(e.dataTransfer.files[0]);
+    });
+    $('fileInput').addEventListener('change', () => { loadFile($('fileInput').files[0]); $('fileInput').value = ''; });
+
+    // ===== 目录扫描（File System Access + IndexedDB 持久授权） =====
+    let dirHandle = null;
+
+    function detectType(obj) {
+      if (!obj || typeof obj !== 'object') return '未知';
+      if ('LocalHatIndex' in obj || 'UnlockedBoatSkins' in obj) return '外观存档';
+      if ('Players' in obj) return '进度存档';
+      return '未知';
+    }
+
+    async function listDir() {
+      const tbody = $('saveListBody');
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">扫描中…</td></tr>';
+      const rows = [];
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind !== 'file') continue;
+        const file = await entry.getFile();
+        let type = '非存档';
+        try { type = detectType(JSON.parse(await file.text())); } catch (e) { /* 非 JSON */ }
+        const isBackup = /\.(bak|backup)(_|$)/i.test(entry.name);
+        rows.push({ entry, file, type, isBackup });
+      }
+      rows.sort((a, b) => a.file.lastModified - b.file.lastModified);
+      tbody.innerHTML = '';
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">该目录没有文件</td></tr>';
+      }
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        const td = h => { const d = document.createElement('td'); d.innerHTML = h; tr.appendChild(d); };
+        td('<b>' + r.entry.name + '</b>' + (r.isBackup ? ' <span style="color:#94a3b8;font-size:0.75rem">备份·游戏不读</span>' : ''));
+        td(fmtBytes(r.file.size));
+        td(new Date(r.file.lastModified).toLocaleString('zh-CN', { hour12: false }));
+        td(r.type === '进度存档' ? '<span style="color:var(--accent)">进度存档</span>'
+          : r.type === '外观存档' ? '<span style="color:#059669">外观存档</span>'
+          : '<span style="color:#94a3b8">' + r.type + '</span>');
+        const d = document.createElement('td');
+        if (r.type !== '非存档') {
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-sm';
+          btn.textContent = '导入编辑';
+          btn.style.padding = '3px 12px';
+          btn.onclick = async () => {
+            fileHandle = r.entry; // 目录内文件句柄，保存可直接写回
+            loadFile(r.file);
+          };
+          d.appendChild(btn);
+        } else {
+          d.innerHTML = '<span style="color:#94a3b8">—</span>';
+        }
+        tr.appendChild(d);
+        tbody.appendChild(tr);
+      });
+      $('saveList').style.display = '';
+    }
+
+    // 目录句柄持久化（localStorage 存不了句柄，必须用 IndexedDB）
+    function idbSave(handle) {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('htf-saves', 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('store');
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction('store', 'readwrite');
+          tx.objectStore('store').put(handle, 'savesDir');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    }
+    function idbLoad() {
+      return new Promise(resolve => {
+        const req = indexedDB.open('htf-saves', 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('store');
+        req.onsuccess = () => {
+          const db = req.result;
+          const tx = db.transaction('store', 'readonly');
+          const get = tx.objectStore('store').get('savesDir');
+          get.onsuccess = () => resolve(get.result || null);
+          get.onerror = () => resolve(null);
+        };
+        req.onerror = () => resolve(null);
+      });
+    }
+
+    async function ensurePerm(handle, interactive) {
+      if (!handle || !handle.queryPermission) return false;
+      let perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm === 'granted') return true;
+      if (perm === 'prompt' && interactive) {
+        perm = await handle.requestPermission({ mode: 'readwrite' });
+        return perm === 'granted';
+      }
+      return false;
+    }
+
+    // 自动扫描：有已授权目录就直接扫（无需操作）
+    async function autoScan() {
+      if (!window.showDirectoryPicker) return;
+      const saved = await idbLoad();
+      if (!saved) return;
+      if (await ensurePerm(saved, false)) {
+        dirHandle = saved;
+        await listDir();
+        setStatus('已自动扫描上次授权的存档目录（' + $('saveListBody').children.length + ' 个文件）');
+        $('rescanBtn').style.display = '';
+      }
+    }
+
+    // 手动扫描/重授权：优先用已存句柄（可弹权限确认），否则让用户选择目录
+    $('scanDirBtn').addEventListener('click', async () => {
+      if (!window.showDirectoryPicker) {
+        setStatus('当前环境不支持目录扫描（需 HTTPS / localhost），请用拖入或选择文件方式', true);
+        return;
+      }
+      let handle = await idbLoad();
+      if (!handle || !(await ensurePerm(handle, true))) {
+        try {
+          // startIn 用已保存句柄建议起始目录（免手动导航；不能接任意路径，AppData 需首次手动选择）
+          handle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: handle || undefined });
+        } catch (e) { return; }
+      }
+      try { await idbSave(handle); } catch (e) {}
+      dirHandle = handle;
+      await listDir();
+      $('rescanBtn').style.display = '';
+      setStatus('已扫描存档目录，共列出 ' + $('saveListBody').children.length + ' 个文件（下次自动扫描）');
+    });
+
+    $('rescanBtn').addEventListener('click', async () => {
+      try {
+        const saved = await idbLoad();
+        dirHandle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: saved || undefined });
+        await idbSave(dirHandle);
+        await listDir();
+        setStatus('已更换目录并扫描');
+      } catch (e) {}
+    });
+
+    $('refreshDirBtn').addEventListener('click', listDir);
+
+    // File System Access：打开并拿到写回权限
+    $('openPickBtn').addEventListener('click', async () => {
+      if (!window.showOpenFilePicker) { setStatus('当前环境不支持直接写回（需 HTTPS / localhost），请用拖入或选择文件方式', true); return; }
+      try {
+        [fileHandle] = await window.showOpenFilePicker({ types: [{ description: '存档文件', accept: { 'text/plain': ['.txt'] } }] });
+        const file = await fileHandle.getFile();
+        loadFile(file);
+      } catch (e) { /* 用户取消 */ }
+    });
+
+    function setStatus(msg, isErr) {
+      const box = $('statusBox');
+      box.style.display = '';
+      box.className = isErr ? 'warn-box' : 'ok-box';
+      box.textContent = msg;
+    }
+
+    function loadFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const text = String(reader.result);
+          // 精度保护：SteamID/LastSave 是 17 位大整数，JS Number 会丢精度（如 76561199241350008 → 76561199241350020）。
+          // 解析前转为字符串保留原值，写回前再转回数字（保持游戏格式）。
+          const protectedText = text
+            .replace(/"SteamID"\s*:\s*(-?\d{10,})/g, '"SteamID":"$1"')
+            .replace(/"LastSave"\s*:\s*(-?\d{15,})/g, '"LastSave":"$1"');
+          const obj = JSON.parse(protectedText);
+          if (!obj || typeof obj !== 'object') throw new Error('不是有效的 JSON 对象');
+          isLocal = 'LocalHatIndex' in obj || 'UnlockedBoatSkins' in obj || 'CreaturesToList' in obj;
+          if (!isLocal && !('Players' in obj)) throw new Error('既不是进度档（缺 Players）也不是外观档（缺 LocalHatIndex）');
+          data = obj;
+          rawJson = text;
+          fileName = file.name;
+          fileHandle = fileHandle && fileHandle.name === file.name ? fileHandle : null;
+          renderAll();
+        } catch (err) {
+          setStatus('解析失败：' + err.message + '（请确认选择了 你的存档名.txt / local.txt）', true);
+        }
+      };
+      reader.readAsText(file, 'utf-8');
+    }
+
+    // ================= 渲染 =================
+    // Steam 玩家信息：自建接口批量查询头像/昵称（优先腾讯云 SCF，备用 Cloudflare Worker，自动降级）
+    const STEAM_API = [
+      'https://1316570557-6ivq8oy6fr.ap-guangzhou.tencentscf.com',
+      'https://steamapi.thomas-5ad.workers.dev'
+    ];
+
+    const steamCache = (() => {
+      let store = {};
+      try { store = JSON.parse(localStorage.getItem('htf_steam_cache') || '{}'); } catch (e) {}
+      return {
+        get(id) { const it = store[id]; if (it && Date.now() - it.t < 3600e3) return it.p; return null; },
+        set(id, p) {
+          store[id] = { t: Date.now(), p: p };
+          try { localStorage.setItem('htf_steam_cache', JSON.stringify(store)); } catch (e) {}
+        }
+      };
+    })();
+
+    // 自适应解析 Worker 返回（兼容 Steam API response.players / 裸数组 / data.players 等结构）
+    function parsePlayersList(json) {
+      if (!json) return [];
+      if (json.response && Array.isArray(json.response.players)) return json.response.players;
+      if (Array.isArray(json.players)) return json.players;
+      if (json.data && Array.isArray(json.data.players)) return json.data.players;
+      if (Array.isArray(json)) return json;
+      return [];
+    }
+
+    async function fetchSteamPlayers(ids) {
+      const unique = [...new Set(ids.filter(Boolean))];
+      if (!unique.length) return {};
+      const query = '?steamids=' + unique.join(',');
+      let lastErr = null;
+      // 按顺序尝试：腾讯云 SCF → Cloudflare Worker，任一成功即返回
+      for (const api of STEAM_API) {
+        try {
+          const res = await fetch(api + query);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          // 响应同样做精度保护：接口返回的 steamid 若为数字（17 位），res.json() 会丢精度导致匹配失败
+          const text = await res.text();
+          const json = JSON.parse(text.replace(/"steamid"\s*:\s*(-?\d{10,})/gi, '"steamid":"$1"'));
+          const list = parsePlayersList(json);
+          if (!list.length) throw new Error('返回为空');
+          const map = {};
+          list.forEach(p => { if (p && p.steamid) map[String(p.steamid)] = p; });
+          if (!Object.keys(map).length) throw new Error('无有效玩家数据');
+          return map;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error('所有接口均失败');
+    }
+
+    const STATE_NAMES = { 0: '离线', 1: '在线', 2: '忙碌', 3: '离开', 4: '打赏', 5: '想交易', 6: '想玩' };
+
+    // 加载中占位（骨架 + 提示文字）
+    function loadingCardHtml() {
+      return '<div class="sp-card sp-card-ph">' +
+        '<div class="sp-avatar"></div>' +
+        '<div class="sp-info"><div class="sp-name-ph"></div><div class="sp-status-ph"></div>' +
+        '<div class="sp-loading">Steam 资料加载中…</div></div></div>';
+    }
+
+    function playerCardHtml(p) {
+      // 无数据/请求失败：灰色占位骨架
+      if (!p) {
+        return '<div class="sp-card sp-card-ph" title="无法获取玩家信息（网络或 Worker 不可达）">' +
+          '<div class="sp-avatar"></div>' +
+          '<div class="sp-info"><div class="sp-name-ph"></div><div class="sp-status-ph"></div></div></div>';
+      }
+      const avatar = p.avatarfull || p.avatarmedium || p.avatar || '';
+      const inGame = !!p.gameextrainfo;
+      const online = (p.personastate > 0) || inGame;
+      const color = inGame ? '#90ba3c' : (online ? '#57cbde' : '#898989');
+      const status = inGame ? p.gameextrainfo : (STATE_NAMES[p.personastate] || '离线');
+      return '<div class="sp-card">' +
+        (avatar
+          ? '<img class="sp-avatar" src="' + avatar + '" alt="" loading="lazy">'
+          : '<div class="sp-avatar sp-avatar-ph">?</div>') +
+        '<div class="sp-info"><div class="sp-name" title="' + (p.personaname || '') + '">' + (p.personaname || '未知玩家') + '</div>' +
+        '<div class="sp-status" style="color:' + color + '">' + status + '</div></div></div>';
+    }
+
+    // 批量加载所有玩家信息卡（合并一次请求，带缓存）
+    async function loadPlayerCards() {
+      if (!data || !data.Players) return;
+      const ids = data.Players.map(p => p.SteamID);
+      const missing = ids.filter(id => id && !steamCache.get(id));
+      const fetched = {};
+      if (missing.length) {
+        try { Object.assign(fetched, await fetchSteamPlayers(missing)); } catch (e) {}
+        Object.entries(fetched).forEach(([id, p]) => steamCache.set(id, p));
+      }
+      document.querySelectorAll('.mp-wrap[data-sid]').forEach(wrap => {
+        const sid = wrap.dataset.sid;
+        wrap.innerHTML = playerCardHtml(fetched[sid] || steamCache.get(sid));
+      });
+    }
+
+    function renderAll() {
+      $('editorArea').style.display = '';
+      $('saveBtn').disabled = false;
+      $('saveBtn2').disabled = false;
+      $('backupBtn').disabled = false;
+      $('backupBtn2').disabled = false;
+      setStatus('已载入 ' + fileName + '（' + (isLocal ? '外观存档' : '进度存档') + '）' + (fileHandle ? '，可写回原文件' : '，保存将生成新文件'));
+      renderInfo();
+      if (isLocal) {
+        $('wwwPanel').style.display = 'none';
+        $('localPanel').style.display = '';
+        $('derivedWarn').style.display = 'none';
+        renderLocal();
+      } else {
+        $('localPanel').style.display = 'none';
+        $('wwwPanel').style.display = '';
+        $('derivedWarn').style.display = '';
+        renderWww();
+      }
+    }
+
+    function renderInfo() {
+      const box = $('infoBox');
+      if (isLocal) {
+        box.innerHTML =
+          '<div class="kv">类型：<span class="val">local.txt 外观/图鉴/设置档</span></div>' +
+          '<div class="kv">帽子 <b>' + (data.LocalHatIndex ?? '-') + '</b> · 服装 <b>' + (data.LocalOutfitIndex ?? '-') +
+          '</b> · 配饰 <b>' + (data.LocalAccessoryIndex ?? '-') + '</b></div>' +
+          '<div class="kv">船皮肤解锁 <b>' + (data.UnlockedBoatSkins ? data.UnlockedBoatSkins.length : '-') +
+          '</b> 款 · 图鉴 <b>' + (data.CreaturesToList ? data.CreaturesToList.filter(c => c.BeenKilled).length : '-') +
+          '/' + (data.CreaturesToList ? data.CreaturesToList.length : '-') + '</b> 种已击杀</div>';
+      } else {
+        const p0 = data.Players && data.Players[0];
+        const hasItems = data.Players ? data.Players.reduce((s, p) => s + p.InventoryItems.filter(i => i.Exists).length, 0) : 0;
+        box.innerHTML =
+          '<div class="kv">类型：<span class="val">进度存档（含 Players 字段）</span> · 存档名 <b>' + (data.Name || '-') + '</b></div>' +
+          '<div class="kv">最后保存：<b>' + fmtTicks(data.LastSave) + '</b>（' + data.LastSave + '）</div>' +
+          '<div class="kv">游戏时长：<b>' + fmtPlaytime(data.Playtime) + '</b>（' + data.Playtime + ' 秒）</div>' +
+          '<div class="kv">金钱：<b>' + (data.Money ?? '-') + '</b> · 难度 <b>' + (data.Difficulty ?? '-') + '</b> · 当前岛 <b>' +
+          (ISLAND_NAMES[data.SpawnedIsland] || data.SpawnedIsland) + '</b> · 最高岛 <b>' + (data.MaxIsland === 255 ? '全解锁' : data.MaxIsland) + '</b></div>' +
+          '<div class="kv">玩家 <b>' + data.Players.length + '</b> 人 · 物品总数 <b>' + hasItems + '</b> · 通关 <b>' +
+          (data.HasFinishedGame ? '是' : '否') + '</b> · 最终Boss <b>' + (data.FinalBossKilled ? '已击杀' : '未击杀') + '</b></div>' +
+          '<div class="kv">船解锁 <b>' + (data.UnlockedBoat ? '是' : '否') + '</b> · 雷达 <b>' + (data.UnlockedBoatRadar ? '是' : '否') + '</b> · 烤架 <b>' + (data.UnlockedGrill ? '是' : '否') + '</b> · 引擎 <b>' + (data.MotorIndex ?? '-') + '</b> · 船皮肤 <b>' + (data.BoatSkin ?? '-') + '</b></div>';
+      }
+    }
+
+    // ================= WwW 面板（存档级 + 每玩家独立编辑） =================
+    function row(label, id, val, type) {
+      const w = type === 'float' ? 110 : 90;
+      return '<div class="kv" style="margin:6px 0">' + label + '　<input type="number" id="' + id +
+        '" value="' + (val ?? 0) + '" style="width:' + w + 'px;padding:5px 8px;border:1px solid rgba(255,255,255,0.8);border-radius:6px;background:rgba(255,255,255,0.6);color:var(--text);outline:none"></div>';
+    }
+    function bindVal(id, fn) {
+      $(id).addEventListener('input', () => {
+        const el = $(id);
+        fn(el.type === 'number' ? parseFloat(el.value) : el.value);
+        renderInfo();
+      });
+    }
+    function itemSel(item) {
+      const opts = ITEM_IDS.map(id => '<option value="' + id + '"' + (item.ItemID === id ? ' selected' : '') + '>' + id + ' · ' + ITEM_NAMES[id] + '</option>').join('');
+      return '<select data-f="ItemID">' + opts + '</select>';
+    }
+
+    function renderWww() {
+      $('derivedWarn').innerHTML =
+        '⚠️ <b>会被游戏重算的字段</b>：MaxIsland / UnlockedBoat / UnlockedBoatRadar / UnlockedGrill / FinalBossKilled / HasFinishedGame 为<b>派生显示值</b>，' +
+        '游戏保存时会按真实进度覆盖（改低无效）。物品实例属性（ItemID / Sight / 配件）与 Money 等可持久修改。';
+      renderTopFields();
+      renderPlayers();
+    }
+
+    // 存档级字段（Money 等全局值）
+    function renderTopFields() {
+      const box = $('playersArea');
+      const top = document.createElement('div');
+      top.className = 'tool-card2';
+      top.innerHTML = '<h3>存档级数值</h3>';
+      const div = document.createElement('div');
+      div.innerHTML =
+        row('金钱 Money', 'money', data.Money, 'int') +
+        row('难度 Difficulty', 'difficulty', data.Difficulty, 'int') +
+        row('游戏时长(秒)', 'playtime', data.Playtime, 'float') +
+        chkRow('雷达 UnlockedBoatRadar', 'radar', data.UnlockedBoatRadar) +
+        chkRow('烤架 UnlockedGrill', 'grill', data.UnlockedGrill) +
+        row('引擎 MotorIndex', 'motor', data.MotorIndex ?? 0, 'int') +
+        row('船皮肤 BoatSkin（0–13）', 'boatSkin', data.BoatSkin ?? 0, 'int') +
+        '<div class="kv" style="color:var(--muted)">⚠️ 派生值（会被游戏按真实进度重算，改低可能无效）：最高岛 = ' + (data.MaxIsland === 255 ? '全解锁' : data.MaxIsland) +
+        ' · 通关 = ' + (data.HasFinishedGame ? '是' : '否') + ' · 船 = ' + (data.UnlockedBoat ? '解锁' : '锁定') + '</div>';
+      top.appendChild(div);
+      box.innerHTML = '';
+      box.appendChild(top); // 先挂载
+      bindVal('money', v => { data.Money = v; renderInfo(); }); // 后绑定（元素已在 DOM）
+      bindVal('difficulty', v => { data.Difficulty = v; renderInfo(); });
+      bindVal('playtime', v => { data.Playtime = v; renderInfo(); });
+      bindChk('radar', v => { data.UnlockedBoatRadar = v; renderInfo(); });
+      bindChk('grill', v => { data.UnlockedGrill = v; renderInfo(); });
+      bindVal('motor', v => { data.MotorIndex = v; renderInfo(); });
+      bindVal('boatSkin', v => { data.BoatSkin = v; renderInfo(); });
+    }
+
+    // 每个玩家一个区块：数值 + 物品栏 + 鱼饵
+    function renderPlayers() {
+      const box = $('playersArea');
+      // 清除已渲染的玩家卡（保留存档级数值卡），避免重复追加
+      box.querySelectorAll('.player-card').forEach(el => el.remove());
+      data.Players.forEach((p, idx) => {
+        if (!p || typeof p !== 'object') return;
+        const card = document.createElement('div');
+        card.className = 'tool-card2 player-card';
+        // 标题行：左标题 + 右上方迷你资料卡
+        const head = document.createElement('div');
+        head.className = 'player-head';
+        const h3 = document.createElement('h3');
+        h3.textContent = '玩家 ' + (idx + 1) + (p.SteamID ? '（SteamID ' + p.SteamID + '）' : '');
+        head.appendChild(h3);
+        const mp = document.createElement('div');
+        mp.className = 'mp-wrap';
+        if (p.SteamID) {
+          mp.dataset.sid = String(p.SteamID);
+          mp.innerHTML = loadingCardHtml(); // 加载中占位，请求完成后替换
+        } else {
+          mp.innerHTML = playerCardHtml(null); // 无 SteamID：灰色占位
+        }
+        head.appendChild(mp);
+        card.appendChild(head);
+        card.appendChild(buildPlayerFields(p, idx));
+        card.appendChild(buildInventory(p, idx));
+        card.appendChild(buildBaits(p, idx));
+        box.appendChild(card); // 先整体挂载到文档树
+        bindPlayerFields(p, idx); // 再绑定（此时 getElementById 才能找到输入框）
+      });
+      loadPlayerCards(); // 批量加载所有玩家信息卡（一次请求）
+    }
+
+    function buildPlayerFields(p, idx) {
+      const div = document.createElement('div');
+      div.innerHTML =
+        '<div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin:4px 0 6px">数值</div>' +
+        row('生命 Health', 'ph_' + idx + '_h', p.Health ?? 100, 'int') +
+        row('饱食 Fullness', 'ph_' + idx + '_f', p.Fullness ?? 0, 'int') +
+        row('额外槽位 ExtraSlots', 'ph_' + idx + '_s', p.ExtraSlots ?? 0, 'int');
+      return div;
+    }
+
+    function bindPlayerFields(p, idx) {
+      bindVal('ph_' + idx + '_h', v => { p.Health = v; renderInfo(); });
+      bindVal('ph_' + idx + '_f', v => { p.Fullness = v; renderInfo(); });
+      // ExtraSlots 特殊绑定：change 时校验将消失槽位（需求：减少槽位前检查其上物品）
+      const slotsEl = $('ph_' + idx + '_s');
+      slotsEl.addEventListener('change', () => {
+        const newVal = Math.max(0, Math.floor(parseFloat(slotsEl.value) || 0));
+        const oldVal = p.ExtraSlots ?? 0;
+        if (newVal === oldVal) return;
+        const totalNew = newVal + 3;
+        const doomed = (p.InventoryItems || []).filter(i => i && i.Exists && (i.InventorySlot ?? 0) >= totalNew);
+        if (doomed.length) {
+          const names = doomed.map(i => '槽 ' + i.InventorySlot + '：' + (ITEM_NAMES[i.ItemID] || 'ID ' + i.ItemID)).join('\n');
+          if (!confirm('额外槽位减少后，以下槽位的物品将被清空：\n' + names + '\n\n确定清空吗？（取消则保持原值）')) {
+            slotsEl.value = oldVal; // 拒绝编辑：恢复旧值
+            return;
+          }
+          p.InventoryItems = (p.InventoryItems || []).filter(i => !(i && i.Exists && (i.InventorySlot ?? 0) >= totalNew));
+        }
+        p.ExtraSlots = newVal;
+        renderInfo();
+        renderPlayers(); // 槽位总数变化，重渲染物品表格（已清除旧卡，不会重复）
+      });
+    }
+
+    function newItem(slot) {
+      return {
+        Exists: true, InventorySlot: slot, ItemID: 61, Cookness: 0.0, BettingMultiplier: 1.0,
+        Weight: 1.0, KillScoreMultiplier: 1.0, IsDripCreature: false, SkinIndex: 0, Sharpness: 0,
+        Sight: 0, BarrelAttachment: 0, AmmoType: 0, ExtendedMag: false, LaserSight: false
+      };
+    }
+
+    function itemOpts() {
+      return ITEM_IDS.map(id => '<option value="' + id + '">' + id + ' · ' + ITEM_NAMES[id] + '</option>').join('');
+    }
+    function sightSel(it) {
+      return '<select data-f="Sight">' + [0, 1, 2].map(s => '<option value="' + s + '"' + ((it.Sight ?? 0) === s ? ' selected' : '') + '>' + SIGHT_NAMES[s] + '</option>').join('') + '</select>';
+    }
+    function ammoSel(it) {
+      return '<select data-f="AmmoType">' + [0, 4, 5, 6, 7].map(a => {
+        const label = a === 0 ? '无' : (AMMO_NAMES[a] || '类型 ' + a) + '(' + a + ')';
+        return '<option value="' + a + '"' + ((it.AmmoType ?? 0) === a ? ' selected' : '') + '>' + label + '</option>';
+      }).join('') + '</select>';
+    }
+    function barrelSel(it) {
+      return '<select data-f="BarrelAttachment">' + [0, 1, 2].map(b => '<option value="' + b + '"' + ((it.BarrelAttachment ?? 0) === b ? ' selected' : '') + '>' + BARREL_NAMES[b] + '</option>').join('') + '</select>';
+    }
+    function bindRowEdits(tr, it) {
+      tr.querySelectorAll('[data-f]').forEach(el => {
+        el.addEventListener('input', () => {
+          const f = el.dataset.f;
+          if (el.type === 'checkbox') it[f] = el.checked;
+          else if (el.tagName === 'SELECT') it[f] = parseInt(el.value, 10);
+          else it[f] = el.value === '' ? 0 : parseFloat(el.value);
+        });
+      });
+    }
+    // 生物字段输入（float 非负，带说明）
+    function creatureField(it, f, label) {
+      return '<input type="number" min="0" step="0.01" data-f="' + f + '" value="' + (it[f] ?? 0) + '" title="' + label + '">';
+    }
+
+    // 物品栏：显示全部槽位（槽位数 = 基础 3 + 额外 ExtraSlots），未解锁槽位灰显不可编辑
+    function buildInventory(p, idx) {
+      const wrap = document.createElement('div');
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size:0.85rem;font-weight:700;color:var(--muted);margin:12px 0 6px';
+      const table = document.createElement('table');
+      table.className = 'items';
+      table.innerHTML = '<thead><tr><th>槽位</th><th>物品</th><th>皮肤</th><th>锋利度</th><th>瞄准镜</th><th>枪口</th><th>弹药等级</th><th>扩容</th><th>激光</th><th>烹饪度</th><th>投注倍数</th><th>重量</th><th>击杀倍率</th><th>闪光</th><th>操作</th></tr></thead><tbody></tbody>';
+      const tb = table.querySelector('tbody');
+
+      const refresh = () => {
+        tb.innerHTML = '';
+        const total = (p.ExtraSlots ?? 0) + 3; // 槽位总数 = 基础 3 + 额外
+        let maxSlot = total - 1;
+        (p.InventoryItems || []).forEach(i => { if (i && i.InventorySlot != null) maxSlot = Math.max(maxSlot, i.InventorySlot); });
+        for (let s = 0; s <= maxSlot; s++) {
+          const it = (p.InventoryItems || []).find(i => i && i.Exists && i.InventorySlot === s);
+          const unlocked = s < total;
+          const tr = document.createElement('tr');
+          const td = (inner) => { const d = document.createElement('td'); d.innerHTML = inner; tr.appendChild(d); };
+          if (!unlocked) {
+            // 未解锁槽位：灰显不可编辑（12 个占位列 = 皮肤..闪光）
+            tr.style.opacity = '0.45';
+            td('<b>' + s + '</b>');
+            td('<span style="color:#94a3b8">未解锁</span>');
+            for (let c = 0; c < 12; c++) td('<span style="color:#94a3b8">—</span>');
+            const d = document.createElement('td');
+            if (it) {
+              const del = document.createElement('button');
+              del.className = 'del';
+              del.textContent = '移除';
+              del.onclick = () => { p.InventoryItems = p.InventoryItems.filter(x => x !== it); refresh(); renderInfo(); };
+              d.appendChild(del);
+            } else {
+              d.innerHTML = '<span style="color:#94a3b8">—</span>';
+            }
+            tr.appendChild(d);
+          } else if (it) {
+            // 已解锁且有物品：完整编辑（按类别限制可用列）
+            const gun = isGun(it.ItemID);
+            const skin = canSkin(it.ItemID);
+            const creature = isCreature(it.ItemID);
+            td('<b>' + s + '</b>');
+            const itemTd = document.createElement('td');
+            itemTd.innerHTML = itemSel(it);
+            // 切换物品后：重置该物品的关联数值（不同物品类别参数无意义），再重判类别刷新行
+            const origId = it.ItemID;
+            itemTd.querySelector('select').addEventListener('change', () => {
+              if (it.ItemID !== origId) {
+                it.SkinIndex = 0; it.Sharpness = 0; it.Sight = 0;
+                it.BarrelAttachment = 0; it.AmmoType = 0;
+                it.ExtendedMag = false; it.LaserSight = false;
+                it.Cookness = 0; it.BettingMultiplier = 1; it.Weight = 1;
+                it.KillScoreMultiplier = 1; it.IsDripCreature = false;
+              }
+              refresh();
+            });
+            tr.appendChild(itemTd);
+            td(skin ? '<input type="number" data-f="SkinIndex" value="' + (it.SkinIndex ?? 0) + '">' : '<span style="color:#94a3b8">—</span>');
+            td('<input type="number" data-f="Sharpness" value="' + (it.Sharpness ?? 0) + '">');
+            td(gun ? sightSel(it) : '<span style="color:#94a3b8">—</span>');
+            td(gun ? barrelSel(it) : '<span style="color:#94a3b8">—</span>');
+            td(gun ? ammoSel(it) : '<span style="color:#94a3b8">—</span>');
+            td(gun ? '<input type="checkbox" class="chk" data-f="ExtendedMag"' + (it.ExtendedMag ? ' checked' : '') + '>' : '<span style="color:#94a3b8">—</span>');
+            td(gun ? '<input type="checkbox" class="chk" data-f="LaserSight"' + (it.LaserSight ? ' checked' : '') + '>' : '<span style="color:#94a3b8">—</span>');
+            // 生物参数（仅动物/生物类型可编辑）
+            td(creature ? creatureField(it, 'Cookness', '烹饪度') : '<span style="color:#94a3b8">—</span>');
+            td(creature ? creatureField(it, 'BettingMultiplier', '投注倍数') : '<span style="color:#94a3b8">—</span>');
+            td(creature ? creatureField(it, 'Weight', '重量') : '<span style="color:#94a3b8">—</span>');
+            td(creature ? creatureField(it, 'KillScoreMultiplier', '击杀分数倍数') : '<span style="color:#94a3b8">—</span>');
+            td(creature ? '<input type="checkbox" class="chk" data-f="IsDripCreature"' + (it.IsDripCreature ? ' checked' : '') + '>' : '<span style="color:#94a3b8">—</span>');
+            const d = document.createElement('td');
+            const del = document.createElement('button');
+            del.className = 'del';
+            del.textContent = '删除';
+            del.onclick = () => { p.InventoryItems = p.InventoryItems.filter(x => x !== it); refresh(); renderInfo(); };
+            d.appendChild(del);
+            tr.appendChild(d);
+            bindRowEdits(tr, it);
+          } else {
+            // 空槽位：可选物品创建
+            td('<b>' + s + '</b>');
+            const sel = document.createElement('select');
+            sel.innerHTML = '<option value="">（空槽位·选择物品）</option>' + itemOpts();
+            sel.addEventListener('change', () => {
+              if (!sel.value) return;
+              const ni = newItem(s);
+              ni.ItemID = parseInt(sel.value, 10);
+              p.InventoryItems.push(ni);
+              refresh();
+              renderInfo();
+            });
+            const d1 = document.createElement('td');
+            d1.appendChild(sel);
+            tr.appendChild(d1);
+            for (let c = 0; c < 12; c++) td('<span style="color:#94a3b8">—</span>');
+            const d = document.createElement('td');
+            d.innerHTML = '<span style="color:#94a3b8">—</span>';
+            tr.appendChild(d);
+          }
+          tb.appendChild(tr);
+        }
+      };
+      refresh();
+      const total = (p.ExtraSlots ?? 0) + 3;
+      label.textContent = '物品栏（共 ' + total + ' 槽：基础 3 + 额外 ' + (p.ExtraSlots ?? 0) + '）';
+      wrap.appendChild(label);
+      wrap.appendChild(table);
+      return wrap;
+    }
+
+    function buildBaits(p, idx) {
+      const wrap = document.createElement('div');
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size:0.85rem;font-weight:700;color:var(--muted);margin:12px 0 6px';
+      label.textContent = '鱼饵持有量（OwnedBaits，16 种）';
+      wrap.appendChild(label);
+      const grid = document.createElement('div');
+      grid.className = 'bait-grid';
+      (p.OwnedBaits || []).forEach((v, i) => {
+        const bait = BAIT_NAMES[i] || ['饵 ' + i, '', ''];
+        const d = document.createElement('div');
+        d.className = 'bait-item';
+        const tagColor = BAIT_CLASS_COLOR[bait[2]] || '#64748b';
+        d.innerHTML =
+          '<span class="tag" style="background:' + tagColor + '">' + bait[2] + '</span>' +
+          '<span class="bait-name"><b>' + bait[1] + '</b><span class="en">' + bait[0] + '</span></span>' +
+          '<input type="number" min="0" value="' + v + '" title="持有数量">';
+        d.querySelector('input').addEventListener('input', e => {
+          p.OwnedBaits[i] = Math.max(0, Math.floor(parseFloat(e.target.value) || 0));
+        });
+        grid.appendChild(d);
+      });
+      wrap.appendChild(grid);
+      return wrap;
+    }
+
+    // ================= local 面板 =================
+    function seenCount(field) {
+      const arr = data[field];
+      return Array.isArray(arr) ? arr.filter(Boolean).length : 0;
+    }
+
+    function selRow(label, id, val, count) {
+      const opts = Array.from({ length: count }, (_, i) =>
+        '<option value="' + i + '"' + (val === i ? ' selected' : '') + '>' + i + '</option>').join('');
+      return '<div class="kv" style="margin:6px 0">' + label + '　<select id="' + id +
+        '" style="padding:5px 8px;border:1px solid rgba(255,255,255,0.8);border-radius:6px;background:rgba(255,255,255,0.6);color:var(--text);outline:none">' + opts + '</select></div>';
+    }
+    function bindSel(id, fn) {
+      $(id).addEventListener('change', () => { fn(parseInt($(id).value, 10)); renderInfo(); });
+    }
+    function chkRow(label, id, val) {
+      return '<div class="kv" style="margin:6px 0;display:flex;align-items:center;gap:6px">' + label +
+        '　<input type="checkbox" id="' + id + '" class="chk"' + (val ? ' checked' : '') + '></div>';
+    }
+    function bindChk(id, fn) {
+      $(id).addEventListener('change', () => { fn($(id).checked); renderInfo(); });
+    }
+
+    function renderLocal() {
+      const box = $('localFields');
+      box.innerHTML =
+        selRow('帽子 HatIndex（0–' + (HAT_COUNT - 1) + '）', 'hat', data.LocalHatIndex ?? 0, HAT_COUNT) +
+        selRow('服装 OutfitIndex（0–' + (OUTFIT_COUNT - 1) + '）', 'outfit', data.LocalOutfitIndex ?? 0, OUTFIT_COUNT) +
+        selRow('配饰 AccessoryIndex（0–' + (ACC_COUNT - 1) + '）', 'acc', data.LocalAccessoryIndex ?? 0, ACC_COUNT) +
+        chkRow('豆人形态 IsBean（彩蛋）', 'isbean', data.IsBean) +
+        chkRow('X 轴反转 InvertXInput', 'invx', data.InvertXInput) +
+        chkRow('Y 轴反转 InvertYInput', 'invy', data.InvertYInput) +
+        '<div class="kv" style="color:var(--muted);margin-top:8px">已见过：帽子 ' + seenCount('SeenHats') + '/' + HAT_COUNT +
+        ' · 服装 ' + seenCount('SeenOutfits') + '/' + OUTFIT_COUNT +
+        ' · 配饰 ' + seenCount('SeenAccesories') + '/' + ACC_COUNT +
+        ' · 船皮肤 ' + (Array.isArray(data.UnlockedBoatSkins) ? data.UnlockedBoatSkins.length : 0) + '/14</div>';
+      bindSel('hat', v => data.LocalHatIndex = v);
+      bindSel('outfit', v => data.LocalOutfitIndex = v);
+      bindSel('acc', v => data.LocalAccessoryIndex = v);
+      bindChk('isbean', v => data.IsBean = v);
+      bindChk('invx', v => data.InvertXInput = v);
+      bindChk('invy', v => data.InvertYInput = v);
+      renderBestiary();
+      renderItemSkins();
+    }
+
+    // 生物图鉴：ID = 生物 ItemID（0–52 及 79），逐项编辑击杀标记
+    function renderBestiary() {
+      const box = $('bestiaryBox');
+      box.innerHTML = '';
+      const list = data.CreaturesToList || [];
+      if (!list.length) { box.innerHTML = '<div class="mp-note">无图鉴数据</div>'; return; }
+      const table = document.createElement('table');
+      table.className = 'items';
+      table.innerHTML = '<thead><tr><th>生物</th><th>普通击杀</th><th>Drip击杀</th></tr></thead><tbody></tbody>';
+      const tb = table.querySelector('tbody');
+      list.forEach((c, i) => {
+        const tr = document.createElement('tr');
+        const td = h => { const d = document.createElement('td'); d.innerHTML = h; tr.appendChild(d); };
+        td('<b>' + (ITEM_NAMES[c.ID] || '未知 #' + c.ID) + '</b> <span style="color:var(--muted)">#' + c.ID + '</span>');
+        td('<input type="checkbox" class="chk" data-k="BeenKilled"' + (c.BeenKilled ? ' checked' : '') + '>');
+        td('<input type="checkbox" class="chk" data-k="KilledDrip"' + (c.KilledDrip ? ' checked' : '') + '>');
+        tr.querySelectorAll('[data-k]').forEach(el => {
+          el.addEventListener('change', () => { c[el.dataset.k] = el.checked; renderInfo(); });
+        });
+        tb.appendChild(tr);
+      });
+      box.appendChild(table);
+    }
+
+    // 物品皮肤：ID = 物品 ItemID，只读展示已解锁皮肤数
+    function renderItemSkins() {
+      const box = $('skinBox');
+      const list = data.UnlockedItemSkins || [];
+      if (!list.length) { box.innerHTML = '<div class="mp-note">无皮肤数据</div>'; return; }
+      box.innerHTML = list.map(s =>
+        '<div class="kv">' + (ITEM_NAMES[s.ID] || '物品 #' + s.ID) + '：已解锁 <b>' +
+        (Array.isArray(s.SkinsUnlocked) ? s.SkinsUnlocked.length : 0) + '</b> 款皮肤</div>'
+      ).join('');
+    }
+
+    $('unlockSkinsBtn').addEventListener('click', () => {
+      data.UnlockedBoatSkins = Array.from({ length: 14 }, (_, i) => i);
+      setStatus('船皮肤已全部解锁（0–13，共 14 款）');
+      renderInfo();
+    });
+    $('unlockBestiaryBtn').addEventListener('click', () => {
+      if (Array.isArray(data.CreaturesToList)) {
+        data.CreaturesToList.forEach(c => { c.BeenKilled = true; c.KilledDrip = true; });
+        setStatus('图鉴已全收集（' + data.CreaturesToList.length + ' 种全部标记击杀）');
+      } else {
+        setStatus('存档中没有图鉴数组（CreaturesToList）', true);
+      }
+      renderInfo();
+    });
+    $('unlockSeenBtn').addEventListener('click', () => {
+      ['SeenHats', 'SeenOutfits', 'SeenAccesories'].forEach(f => {
+        if (Array.isArray(data[f])) data[f] = data[f].map(() => true);
+      });
+      setStatus('外观「已见过」全部标记');
+      renderInfo();
+    });
+
+    // ================= 保存与备份 =================
+    function getSaveJson() {
+      // 保存前整理：剔除空条目（Exists=false），槽位从小到大排序
+      (data.Players || []).forEach(p => {
+        if (Array.isArray(p.InventoryItems)) {
+          p.InventoryItems = p.InventoryItems.filter(i => i && i.Exists)
+            .sort((a, b) => (a.InventorySlot ?? 0) - (b.InventorySlot ?? 0));
+        }
+      });
+      let json = JSON.stringify(data); // 单行紧凑、无多余空格；中文原样（UTF-8）
+      // 精度保护还原：把字符串形式的 SteamID/LastSave 转回数字（Unity long 字段期望 JSON 数字）
+      json = json.replace(/"SteamID"\s*:\s*"(-?\d{10,})"/g, '"SteamID":$1');
+      json = json.replace(/"LastSave"\s*:\s*"(-?\d{15,})"/g, '"LastSave":$1');
+      return json;
+    }
+
+    async function save() {
+      try {
+        const json = getSaveJson();
+        if (fileHandle && window.showSaveFilePicker) {
+          // 写回原文件前弹出警告
+          if (!confirm('⚠️ 即将直接覆盖原文件「' + fileName + '」！\n\n' +
+              '1. 建议先点「下载备份」保存原始副本；\n' +
+              '2. 请确认已完全退出游戏（否则退出时游戏会把旧状态覆盖回来）；\n' +
+              '3. 派生字段（MaxIsland 等）进游戏可能被重算。\n\n' +
+              '确定要写回吗？')) {
+            return;
+          }
+          try {
+            const writable = await fileHandle.createWritable();
+            await writable.write(json);
+            await writable.close();
+            alert('已写回原文件 ' + fileName + ' ✓\n\n⚠️ 需要完全退出游戏（大退）后重新启动，修改才会生效。\n💡 游戏运行时内存里的进度会在退出时覆盖回存档文件。\n\n页面即将刷新，重新载入最新存档…');
+            setTimeout(() => location.reload(), 500);
+            return;
+          } catch (e) {
+            setStatus('写回失败：' + e.message + '，已改为下载方式', true);
+          }
+        }
+        // 下载方式
+        download(fileName, json, 'text/plain');
+        setStatus('已下载修改后的文件（' + fileName + '）。⚠️ 需要完全退出游戏（大退）后替换文件并重启，修改才会生效。若浏览器未出现下载，说明当前为预览/沙箱环境限制下载——请改用「打开存档（可写回原文件）」方式载入后保存，或部署到正式环境使用。');
+      } catch (err) {
+        setStatus('✗ 保存失败：' + (err && err.message ? err.message : err) +
+          '。若一直失败，可点「下载备份」获取原始文件，或改用「打开存档（可写回原文件）」方式载入后再保存。', true);
+      }
+    }
+
+    function backup() {
+      const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+      download(fileName + '.bak_' + ts, rawJson, 'text/plain');
+      setStatus('已下载原始存档备份：' + fileName + '.bak_' + ts + '（若未出现下载，可能是预览/沙箱环境限制，请用「打开存档」方式或正式环境）');
+    }
+
+    $('saveBtn').addEventListener('click', save);
+    $('saveBtn2').addEventListener('click', save);
+    $('backupBtn').addEventListener('click', backup);
+    $('backupBtn2').addEventListener('click', backup);
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // 页面加载：尝试自动扫描已授权的存档目录（无需操作）
+    autoScan();
+  </script>
+  <script src="../assets/js/tools-recent.js"></script>
+</body>
+</html>
