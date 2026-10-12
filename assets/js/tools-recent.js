@@ -14,7 +14,8 @@
     'base-converter.html': '进制转换',
     'mc-player-query.html': 'MC 玩家查询',
     'mc-server-query.html': 'MC 服务器查询',
-    'howtofish-save-editor.html': '渔力全开存档工具'
+    'howtofish-save-editor.html': '渔力全开存档工具',
+    'exercise-figure.html': '运动小人'
   };
   const KEY = 'tools_recent';
   const MAX = 8;

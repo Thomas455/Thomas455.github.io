@@ -1,10 +1,12 @@
-# WorkBuddy 项目数据（记忆/配置），不随网站上传
+# agent 项目数据（记忆/配置），不随网站上传
 .workbuddy/
+.dsh/
 
 # 系统文件
 .DS_Store
 Thumbs.db
 desktop.ini
+code_str.md
 
 # 编辑器
 .vscode/
