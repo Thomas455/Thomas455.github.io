@@ -340,7 +340,7 @@
               <line id="spine" class="seg near"></line>
               <line id="neckLine" class="seg near"></line>
               <line id="shoulders" class="seg near"></line>
-              <circle id="head" cx="0" cy="0" r="19" class="solid near"></circle>
+              <ellipse id="head" cx="0" cy="0" rx="9.5" ry="12.5" class="solid near"></ellipse>
             </g>
 
             <g id="grpNearLeg">
@@ -355,10 +355,14 @@
             </g>
           </g>
 
-          <!-- 眼睛必须始终画在最上层：正面视角位于头内，侧面视角位于头前缘 -->
+          <!-- 五官必须始终画在最上层：正面视角位于头内，侧面视角位于头前缘。
+               眼睛和嘴巴都放在这里（而不是头所在的 grpTorso 里），
+               否则它们会被统一轮廓滤镜一起扩张、在蓝脸上糊成一圈深蓝。 -->
           <g id="grpFace">
             <circle id="face" cx="0" cy="0" r="4" fill="#ffffff"></circle>
             <circle id="face2" cx="0" cy="0" r="4" fill="#ffffff"></circle>
+            <path id="mouth" d="" fill="none" stroke="#ffffff" stroke-width="3"
+                  stroke-linecap="round"></path>
           </g>
           </g>
         </g>
@@ -448,20 +452,26 @@
     // ============================================================
     // 2. 骨架尺寸与线条粗细
     // ============================================================
+    // ---- 骨架尺寸 ----
+    // 整体按参考图的「8 头身」写实比例重新标定（a = 头高 = 25 单位）：
+    //   头 1a ／ 下巴到肩 0.5a ／ 肩到胯 2.5a ／ 胯到脚底 4a  合计 8a
+    // 关键变化（旧比例是 5 头身的 Q 版）：头明显变小、腿占全身一半。
+    var HEAD_A = 25;                 // a：头高（= 头纵向直径）
     var L = {
-      neck: 50,        // 骨盆中心 → 颈
-      head: 20,        // 颈 → 头中心
-      headR: 19,       // 头半径
-      chest: 0.55,     // 肩关节在躯干上的位置比例
-      thigh: 50,
-      shin: 48,
+      neck: 78,        // 骨盆中心 → 颈（躯干顶端）
+      head: 13,        // 颈 → 头中心
+      headR: 12.5,     // 头【纵向】半径（= 0.5a）
+      headRx: 9.5,     // 头【横向】半径：比纵向小 → 头是细长的，不是正圆
+      chest: 0.80,     // 肩关节在躯干上的位置比例（肩要靠近躯干顶端）
+      thigh: 52,
+      shin: 42,
       ankleH: 6,       // 踝关节 → 脚掌中心线
-      footFwd: 13,     // 脚尖向前
-      footBack: 5,     // 脚跟向后
-      upperArm: 42,
-      foreArm: 36,
-      shoulderW: 20,   // 半肩宽（仅正面视角可见）
-      hipW: 11
+      footFwd: 16,     // 脚尖向前
+      footBack: 7,     // 脚跟向后
+      upperArm: 46,
+      foreArm: 38,
+      shoulderW: 22,   // 半肩宽（参考图肩宽 2a）
+      hipW: 13
     };
 
     var R = { torso: 13, arm: 8.5, leg: 10.5, foot: 7 };
@@ -470,18 +480,20 @@
     // 体形：各部位的「半宽」（局部坐标单位）。
     // 肢体由不同粗细的圆头胶囊分段拼成，因此有真实的粗细变化，
     // 不是从头到尾一样粗的火柴棍。
+    // 改成 8 头身后整体收细了一点：写实比例下四肢相对更修长，
+    // 若沿用 Q 版的粗细会比躯干还胖。
     // ------------------------------------------------------------
     var BODY = {
-      torsoChest: 12,     // 胸腔半宽（躯干最宽处，须窄于肩线，否则躯干像个方盒子）
-      torsoWaist: 9.5,    // 腰部半宽（略收，形成腰线）
-      neckW: 5,           // 脖颈半宽（细，托住头）
-      shoulder: 7.5,      // 肩线半宽
-      thigh: 9,           // 大腿半宽
-      shin: 6,            // 小腿半宽
-      footW: 6,           // 脚半宽（正面视角：脚的宽度）
-      footH: 3.5,         // 脚半高（正面视角：脚背露出的一点点高度）
-      upperArm: 6,        // 上臂半宽
-      foreArm: 4.5        // 前臂半宽
+      torsoChest: 13,     // 胸腔半宽（躯干最宽处，须窄于肩线，否则躯干像个方盒子）
+      torsoWaist: 9,      // 腰部半宽（略收，形成腰线）
+      neckW: 4.5,         // 脖颈半宽（细，托住头）
+      shoulder: 8,        // 肩线半宽
+      thigh: 8.5,         // 大腿半宽
+      shin: 5.5,          // 小腿半宽
+      footW: 5.5,         // 脚半宽（正面视角：脚的宽度）
+      footH: 3.2,         // 脚半高（正面视角：脚背露出的一点点高度）
+      upperArm: 5.5,      // 上臂半宽
+      foreArm: 4          // 前臂半宽
     };
 
     // 统一轮廓的扩张半径：与 SVG filter 里的 feMorphology radius 一致。
@@ -532,7 +544,15 @@
         shinAbd: shinAbd === undefined ? abd : shinAbd
       };
     }
-    function fArm(abd, flex, elbow) { return { abd: abd, flex: flex, elbow: elbow }; }
+    // 正面视角的手臂：abd 上臂外展、flex 前屈、elbow 肘内角、foreAbd 前臂独立外展。
+    function fArm(abd, flex, elbow, foreAbd) {
+      // foreAbd：前臂的【独立】外展角。省略时沿用上臂（手臂是一根直棍）。
+      // 单独给出可以让小臂相对大臂再折一次横向角度 ——
+      // 开合跳要靠它把小臂从头顶外侧折回中间，和两条上臂围成一个圆。
+      // 只给 abd 的话，小臂永远和上臂共线，举过头顶只会得到两条平行线/一个 V。
+      return { abd: abd, flex: flex, elbow: elbow,
+               foreAbd: foreAbd === undefined ? abd : foreAbd };
+    }
 
     // 左右成对的简写
     function sides2(a, b) { return { L: a, R: b }; }
@@ -544,6 +564,7 @@
       for (var k in g) if (Object.prototype.hasOwnProperty.call(g, k)) c[k] = g[k];
       c.abd = -c.abd;
       c.shinAbd = -c.shinAbd;
+      if (c.foreAbd !== undefined) c.foreAbd = -c.foreAbd;
       return c;
     }
     // 对称动作的两条腿：右侧由左侧镜像得到，保证外展方向相反
@@ -639,19 +660,15 @@
             sLeg(62, 51.5, 0),                  // 骨盆与踝同高 → 臀部与脚掌同时贴地
             sLeg(62, 51.5, 0)
           ),
-          // 抱头：双手托在脑后、耳朵偏下的位置。
-          // 坐直时头几乎在肩的正上方，如果手只贴在头正后方，肘部会被迫折进头里
-          // （实测肘-头距只剩 11，胳膊完全糊成一团，看不出在抱头）。
-          // 把手再往后（dx 更大）一点，肘部就会自然张开在头的外侧，
-          // 这也正是抱头时手肘向前/向两侧张开的姿势。
           // 抱头：双手托在脑后。
-          // along = -22 表示沿躯干反方向、从头中心再往后 22（头半径 19），
-          // 即手正好落在后脑外侧；bend=-1 让肘部向外张开。
-          // 这组值是扫描出来的：其余组合要么肘部缩进头里（糊成一团），
-          // 要么手离开头部；本组全程肘-头距 ≥ 24，各相位都保持抱头姿势。
+          // along 取头纵向半径的 1.15 倍（而不是写死的常数）：
+          // 手必须落在后脑【外侧】。写死数值的话，一旦调整头的大小
+          // （例如从 Q 版改成 8 头身、头半径 19→12.5），手就会离开头部。
+          // bend=-1 让肘部向外张开；这组值经扫描确定，
+          // 其余组合要么肘部缩进头里（糊成一团），要么手够不到头。
           arms: sides2(
-            sArmHand(22, 0, -1),
-            sArmHand(22, 0, -1)
+            sArmHand(L.headR * 1.15, 0, -1),
+            sArmHand(L.headR * 1.15, 0, -1)
           )
         };
       }
@@ -715,14 +732,30 @@
       lift: function (u) { return 40 * pulse(u); },
       pose: function (u) {
         var s = pulse(u);                        // 0 = 并拢，1 = 分开
+        // ---- 摆臂：两段各自绕自己的轴心转动，且【同向】 ----
+        //   大臂：以【肩】为圆心，外展 6°→168°（体侧 → 举过头顶），逆时针扫 162°
+        //   小臂：以【肘】为圆心，外展 6°→236°，逆时针再扫 230°
+        // 两段同向叠加，小臂相对大臂只弯约 68°，在头顶合成一个封闭的圆。
+        //
+        // 关键是 236 而不是 -124：两者在画面上的【方向完全相同】
+        // （236 - 360 = -124），但走过的路径正相反 ——
+        //   取 -124 时小臂要从 +6 一路倒着转到 -124，与大臂方向相反，
+        //   中途肘部会折到 0°（大臂小臂完全对折），看起来就是「小臂绕反了」；
+        //   取 +236 时小臂顺着大臂同方向转，肘部始终维持 110° 以上，符合人体。
+        // 实测：负向方案肘最小夹角 0°（对折），同向方案 110°（正常）。
+        var abd = 6 + 162 * s;
+        var foreAbd = 6 + 230 * s;
+        // 肘部只留很小的前后弯（15°）：正面视角下手臂基本在画面平面内转动，
+        // 肘角给大了会把小臂甩出画面，投影方向随之乱跳。
+        var elbow = 180 - 15 * s;
         return {
           lean: 0, pitch: 0,
           // 落地时略微屈膝缓冲，起跳瞬间蹬直
           legs: symLegs(4 + 22 * s, 0, 176 - 10 * s),
-          // 手臂：从垂下（外展约 6°）经侧平举一路举过头顶；左右各自向自己那侧张开
+          // 左右各自向自己那侧张开
           arms: sides2(
-            fArm(6 + 158 * s, 6, 174 - 10 * s),
-            fArm(-(6 + 158 * s), 6, 174 - 10 * s)
+            fArm(abd, 6, elbow, foreAbd),
+            fArm(-abd, 6, elbow, -foreAbd)
           )
         };
       }
@@ -857,7 +890,10 @@
         var elbowJ = along3(sh, upDir, L.upperArm);
         // 肘向前弯：前臂的前屈角 = 上臂前屈角 + (180 - 肘内角)
         var foreFlex = m.flex + (180 - m.elbow);
-        var foreDir = to3(limbDir3(m.abd, foreFlex));
+        // 前臂的外展角可与上臂不同：开合跳靠它把小臂从头顶外侧折回中间，
+        // 和两条上臂围成一个圆；不给 foreAbd 时沿用上臂（手臂保持一根直棍）。
+        var foreAbd = (m.foreAbd === undefined) ? m.abd : m.foreAbd;
+        var foreDir = to3(limbDir3(foreAbd, foreFlex));
         var wristJ = along3(elbowJ, foreDir, L.foreArm);
         fig.arms[sd.k] = { shoulder: sh, elbow: elbowJ, wrist: wristJ };
       });
@@ -1071,7 +1107,9 @@
       // 否则缩放标定会偏小、身体边缘被画框裁掉。
       var pad = OUTLINE_HALF;
       put(fig.pelvis, RW.torso + pad); put(fig.chest, RW.torso + pad); put(fig.neck, RW.torso + pad);
-      put(fig.head, fig.headR + pad + 1);
+      // 头是椭圆：包围盒要按【较大的那个半径】留余量，否则窄的那个方向
+      // 看似够用，实际会把头的边缘裁掉。
+      put(fig.head, Math.max(fig.headR, L.headRx) + pad + 1);
       ['far', 'near'].forEach(function (k) {
         var g = fig.legs[k], a = fig.arms[k];
         var lr = RW.leg + pad, ar = RW.arm + pad, fr = RW.foot + pad;
@@ -1144,7 +1182,7 @@
       scene: $('scene'),
       spine: $('spine'), spine2: $('spine2'), neckLine: $('neckLine'),
       shoulders: $('shoulders'),
-      head: $('head'), face: $('face'), face2: $('face2'),
+      head: $('head'), face: $('face'), face2: $('face2'), mouth: $('mouth'),
       shadow: $('shadow'),
       badge: $('stageBadge'), view: $('stageView'), desc: $('figDesc')
     };
@@ -1255,17 +1293,37 @@
       var shL = T(fig.arms.near.shoulder), shR = T(fig.arms.far.shoulder);
       seg(E.shoulders, shL, shR, BODY.shoulder * 2 * s);
 
-      // ---- 头 ----
-      setCircle(E.head, head, L.headR * s);
+      // ---- 头：细长的椭圆（横半径 < 纵半径），不是正圆 ----
+      setEllipse(E.head, head, L.headRx * s, L.headR * s);
+      var eRx = L.headRx * s, eRy = L.headR * s;
       if (ex.view === 'front') {
-        var eyeDx = L.headR * s * 0.34, eyeDy = L.headR * s * 0.30;
-        setCircle(E.face, { x: head.x - eyeDx, y: head.y - eyeDy }, 3.6 * s);
-        setCircle(E.face2, { x: head.x + eyeDx, y: head.y - eyeDy }, 3.6 * s);
+        // 正面：两只眼 + 一张嘴。眼距/眼高/嘴位都按头的横纵半径取比例，
+        // 换头型时五官会自动跟着缩放位置，不会跑出脸外。
+        var eyeDx = eRx * 0.40, eyeDy = eRy * 0.26;
+        setCircle(E.face, { x: head.x - eyeDx, y: head.y - eyeDy }, 2.6 * s);
+        setCircle(E.face2, { x: head.x + eyeDx, y: head.y - eyeDy }, 2.6 * s);
+        // 嘴：一条略带弧度的线（嘴角略上扬）
+        var mw = eRx * 0.42, my = head.y + eRy * 0.42;
+        E.mouth.setAttribute('d',
+          'M' + (head.x - mw).toFixed(1) + ' ' + (my - 1.2 * s).toFixed(1) +
+          'Q' + head.x.toFixed(1) + ' ' + (my + 2.4 * s).toFixed(1) +
+          ' ' + (head.x + mw).toFixed(1) + ' ' + (my - 1.2 * s).toFixed(1));
+        E.mouth.setAttribute('stroke-width', (2.4 * s).toFixed(2));
+        E.mouth.setAttribute('opacity', '1');
       } else {
+        // 侧面：一只眼 + 朝向前方的嘴。朝向由躯干与头角决定，躺下时五官也跟着转。
         var faceW = fig.angles.torso + fig.angles.head;
-        var fo = walk({ x: 0, y: 0 }, faceW, L.headR * s * 0.5);
-        setCircle(E.face, { x: head.x + fo.x, y: head.y - fo.y }, 4 * s);
+        var fo = walk({ x: 0, y: 0 }, faceW, eRx * 0.55);
+        setCircle(E.face, { x: head.x + fo.x, y: head.y - fo.y + eRy * 0.22 }, 2.8 * s);
         setCircle(E.face2, { x: head.x + fo.x, y: head.y - fo.y }, 0.01 * s);
+        var mo = walk({ x: 0, y: 0 }, faceW, eRx * 0.62);
+        var mx = head.x + mo.x, myy = head.y - mo.y + eRy * 0.52;
+        E.mouth.setAttribute('d',
+          'M' + (mx - 2.2 * s).toFixed(1) + ' ' + myy.toFixed(1) +
+          'q' + (2.6 * s).toFixed(1) + ' ' + (1.6 * s).toFixed(1) +
+          ' ' + (4.4 * s).toFixed(1) + ' ' + (-0.6 * s).toFixed(1));
+        E.mouth.setAttribute('stroke-width', (2.2 * s).toFixed(2));
+        E.mouth.setAttribute('opacity', '1');
       }
 
       ['near', 'far'].forEach(function (k) {
