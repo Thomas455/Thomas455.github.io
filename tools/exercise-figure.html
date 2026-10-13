@@ -98,43 +98,99 @@
       pointer-events: none;
     }
 
-    /* ---- 人物 ---- */
+    /* ---- 人物配色：皮肤系统 ----
+       所有颜色都收敛成一组 CSS 变量，挂在 .stage-wrap 上（SVG 与轮廓滤镜都能继承），
+       换皮肤 = 换一组变量，几何代码完全不用动。
+       变量含义：
+         --outline  统一外轮廓色（由 #figOut 滤镜的 feFlood 使用）
+         --skin     皮肤（头、脖子、小臂、小腿）
+         --shirt    上衣（躯干、上臂／短袖）
+         --shorts   裤子（骨盆／腰、大腿）
+         --shoe     鞋
+         --eye      五官（眼睛与嘴）
+         每个部位的 *-far 是「侧面视角里远侧肢体」的淡色版本，
+         用来表达前后层次；正面视角不区分远近，统一用本色。 */
+    .stage-wrap {
+      --outline: #1e3a8a;
+      --skin: #2563eb;
+      --shirt: #2563eb;
+      --shorts: #2563eb;
+      --shoe: #2563eb;
+      --eye: #ffffff;
+      --skin-far: #c3cddd;
+      --shirt-far: #c3cddd;
+      --shorts-far: #c3cddd;
+      --shoe-far: #c3cddd;
+    }
+
+    /* 活力：肉色皮肤 + 红色运动短袖 + 深蓝短裤 + 白色运动鞋 */
+    .stage-wrap.skin-vitality {
+      --outline: #7a4526;
+      --skin: #f2c9a4;
+      --shirt: #e8453c;
+      --shorts: #23324d;
+      --shoe: #f4f6fb;
+      --eye: #4a2c17;
+      --skin-far: #e0b590;
+      --shirt-far: #d98079;
+      --shorts-far: #8b96a8;
+      --shoe-far: #cdd4e0;
+    }
+
     #shadow {
       fill: rgba(31, 35, 40, 0.13);
     }
 
     /* 形体：浅色背景（舞台顶部是纯白）上必须有深色轮廓才立得住。
-       每个部件是实心胶囊/圆形（有粗细变化），外圈统一的深蓝轮廓
-       由 #figOut 滤镜生成 —— 见 SVG 里的 <defs>。 */
+       每个部件是实心胶囊/圆形（有粗细变化），外圈统一轮廓
+       由 #figOut 滤镜生成 —— 见 SVG 里的 <defs>。
+       部位类只负责把 --c 指向对应的变量：
+         .p-skin/.p-shirt/.p-shorts/.p-shoe 决定用哪个部位的颜色，
+         .far 再决定用「本色」还是该部位的「远侧淡色」。 */
+    .p-skin   { --c: var(--skin);   --cf: var(--skin-far); }
+    .p-shirt  { --c: var(--shirt);  --cf: var(--shirt-far); }
+    .p-shorts { --c: var(--shorts); --cf: var(--shorts-far); }
+    .p-shoe   { --c: var(--shoe);   --cf: var(--shoe-far); }
+
     .seg {
-      stroke: #2563eb;
+      stroke: var(--c);
       stroke-linecap: round;
       fill: none;
     }
 
     .solid {
-      fill: #2563eb;
+      fill: var(--c);
       stroke: none;
     }
 
-    /* 侧面视角的远侧肢体用浅灰，表达前后层次 */
-    .far {
-      stroke: #c3cddd;
+    /* 侧面视角的远侧肢体用淡色，表达前后层次 */
+    .far.seg {
+      stroke: var(--cf);
     }
 
-    .solid.far {
-      fill: #c3cddd;
+    .far.solid {
+      fill: var(--cf);
     }
 
     /* 正面视角：左右两侧同等可见、并不存在「一前一后」的遮挡关系，
-       因此不再区分远近，整个人物统一用主色。
-       只有侧面视角（仰卧起坐 / 俯卧撑）才保留远侧浅灰。 */
-    #scene.front .far {
-      stroke: #2563eb;
+       因此不再区分远近，整个人物统一用本色。
+       只有侧面视角（仰卧起坐 / 俯卧撑）才保留远侧淡色。 */
+    #scene.front .far.seg {
+      stroke: var(--c);
     }
 
-    #scene.front .solid.far {
-      fill: #2563eb;
+    #scene.front .far.solid {
+      fill: var(--c);
+    }
+
+    /* 五官：颜色随皮肤走（默认皮肤是蓝脸白五官，活力皮肤是肉脸深色五官） */
+    #face,
+    #face2 {
+      fill: var(--eye);
+    }
+
+    #mouth {
+      stroke: var(--eye);
     }
 
     /* ---- 控制区 ---- */
@@ -183,6 +239,54 @@
       gap: 6px;
       flex-wrap: wrap;
       flex-shrink: 0;
+    }
+
+    /* ---- 皮肤选择 ---- */
+    .skins {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .skin-chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 13px 5px 7px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      font-weight: 600;
+      color: var(--muted);
+      border-radius: 999px;
+      border: 1.5px solid rgba(37, 99, 235, 0.2);
+      background: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+
+    .skin-chip:hover {
+      border-color: rgba(37, 99, 235, 0.45);
+    }
+
+    .skin-chip[aria-pressed="true"] {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.1);
+    }
+
+    /* 色板：三个圆点预览这套皮肤的「上衣 / 皮肤 / 短裤」 */
+    .skin-dots {
+      display: flex;
+      border-radius: 999px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1.5px rgba(30, 58, 138, 0.55);
+      flex-shrink: 0;
+    }
+
+    .skin-dots i {
+      display: block;
+      width: 11px;
+      height: 15px;
     }
 
     .preset {
@@ -300,7 +404,8 @@
                    这样手伸到身体前面时能看到手的轮廓。 -->
           <filter id="figOut" x="-25%" y="-25%" width="150%" height="150%">
             <feMorphology in="SourceAlpha" operator="dilate" radius="2.6" result="dil"></feMorphology>
-            <feFlood flood-color="#1e3a8a" result="col"></feFlood>
+            <!-- 轮廓色随皮肤走：flood-color 支持 CSS 变量，取 .stage-wrap 上的 --outline -->
+            <feFlood flood-color="var(--outline, #1e3a8a)" result="col"></feFlood>
             <feComposite in="col" in2="dil" operator="in" result="ring"></feComposite>
             <feMerge>
               <feMergeNode in="ring"></feMergeNode>
@@ -323,35 +428,36 @@
                外圈轮廓由挂在 #figure 上的 figOut 滤镜统一生成。 -->
           <g id="figure" filter="url(#figOut)">
             <g id="grpFarLeg">
-              <line id="farLegUpper" class="seg far"></line>
-              <line id="farLegLower" class="seg far"></line>
-              <ellipse id="farFoot" class="solid far"></ellipse>
-              <line id="farFootSide" class="seg far"></line>
+              <line id="farLegUpper" class="seg p-shorts far"></line>
+              <line id="farLegLower" class="seg p-skin far"></line>
+              <ellipse id="farFoot" class="solid p-shoe far"></ellipse>
+              <line id="farFootSide" class="seg p-shoe far"></line>
             </g>
             <g id="grpFarArm">
-              <line id="farArmUpper" class="seg far"></line>
-              <line id="farArmLower" class="seg far"></line>
+              <line id="farArmUpper" class="seg p-shirt far"></line>
+              <line id="farArmLower" class="seg p-skin far"></line>
             </g>
 
             <!-- 眼睛放在 filter 组【之外】：否则它们的 alpha 也会被一起扩张，
                  在蓝脸上糊出一圈深蓝，看起来像戴了墨镜。 -->
             <g id="grpTorso">
-              <line id="spine2" class="seg near"></line>
-              <line id="spine" class="seg near"></line>
-              <line id="neckLine" class="seg near"></line>
-              <line id="shoulders" class="seg near"></line>
-              <ellipse id="head" cx="0" cy="0" rx="9.5" ry="12.5" class="solid near"></ellipse>
+              <line id="spine2" class="seg p-shorts near"></line>
+              <line id="spine" class="seg p-shirt near"></line>
+              <line id="collar" class="seg p-shirt near"></line>
+              <line id="neckLine" class="seg p-skin near"></line>
+              <line id="shoulders" class="seg p-shirt near"></line>
+              <ellipse id="head" cx="0" cy="0" rx="9.5" ry="12.5" class="solid p-skin near"></ellipse>
             </g>
 
             <g id="grpNearLeg">
-              <line id="nearLegUpper" class="seg near"></line>
-              <line id="nearLegLower" class="seg near"></line>
-              <ellipse id="nearFoot" class="solid near"></ellipse>
-              <line id="nearFootSide" class="seg near"></line>
+              <line id="nearLegUpper" class="seg p-shorts near"></line>
+              <line id="nearLegLower" class="seg p-skin near"></line>
+              <ellipse id="nearFoot" class="solid p-shoe near"></ellipse>
+              <line id="nearFootSide" class="seg p-shoe near"></line>
             </g>
             <g id="grpNearArm">
-              <line id="nearArmUpper" class="seg near"></line>
-              <line id="nearArmLower" class="seg near"></line>
+              <line id="nearArmUpper" class="seg p-shirt near"></line>
+              <line id="nearArmLower" class="seg p-skin near"></line>
             </g>
           </g>
 
@@ -359,11 +465,10 @@
                眼睛和嘴巴都放在这里（而不是头所在的 grpTorso 里），
                否则它们会被统一轮廓滤镜一起扩张、在蓝脸上糊成一圈深蓝。 -->
           <g id="grpFace">
-            <circle id="face" cx="0" cy="0" r="4" fill="#ffffff"></circle>
-            <circle id="face2" cx="0" cy="0" r="4" fill="#ffffff"></circle>
-            <path id="mouth" d="" fill="none" stroke="#ffffff" stroke-width="3"
+            <circle id="face" cx="0" cy="0" r="4"></circle>
+            <circle id="face2" cx="0" cy="0" r="4"></circle>
+            <path id="mouth" d="" fill="none" stroke-width="3"
                   stroke-linecap="round"></path>
-          </g>
           </g>
         </g>
       </svg>
@@ -393,6 +498,10 @@
         <label for="phase">进度</label>
         <input type="range" id="phase" min="0" max="1000" step="1" value="0">
         <span class="val" id="phaseVal">0%</span>
+      </div>
+      <div class="ctrl-row">
+        <label>皮肤</label>
+        <div class="skins" id="skinTabs"></div>
       </div>
     </div>
 
@@ -1180,7 +1289,7 @@
 
     var E = {
       scene: $('scene'),
-      spine: $('spine'), spine2: $('spine2'), neckLine: $('neckLine'),
+      spine: $('spine'), spine2: $('spine2'), collar: $('collar'), neckLine: $('neckLine'),
       shoulders: $('shoulders'),
       head: $('head'), face: $('face'), face2: $('face2'), mouth: $('mouth'),
       shadow: $('shadow'),
@@ -1285,9 +1394,16 @@
       // 颈部必须一直连到 neck 点，否则头会浮在身体上方脱开。
       var waist = T(lerpP(fig.pelvis, fig.neck, 0.18));
       var chest = T(lerpP(fig.pelvis, fig.neck, 0.55));
+      // 脖子只画露在领口以上的那一小段（从 0.86 处到颈点）。
+      // 之前是从 chest(0.55) 一路画到颈点，单色时看不出来，
+      // 换成「肉色脖子 + 红色上衣」后，这条细胶囊会在胸前露出一道肉色竖条，
+      // 像衣服中间破了一条缝。起点上移到领口以上就对了。
+      var nape = T(lerpP(fig.pelvis, fig.neck, 0.86));
       seg(E.spine2, pelvis, waist, BODY.torsoWaist * 2 * s);   // 腰 → 略窄
       seg(E.spine, waist, chest, BODY.torsoChest * 2 * s);     // 腰 → 胸：最宽处
-      seg(E.neckLine, chest, neck, BODY.neckW * 2 * s);        // 胸 → 颈：收细，托住头
+      // 领口到肩这一段仍用上衣色补满，避免胸与脖之间出现缺口
+      seg(E.collar, chest, nape, BODY.torsoChest * 1.15 * s);
+      seg(E.neckLine, nape, neck, BODY.neckW * 2 * s);         // 露出的脖颈
       // 肩线：横向短胶囊。画在胸腔高度，只比胸腔略宽一点，
       // 超出太多躯干就会变成一个方盒子。
       var shL = T(fig.arms.near.shoulder), shR = T(fig.arms.far.shoulder);
@@ -1381,6 +1497,57 @@
     function speedToSlider(sp) { return Math.round(1000 * Math.log(sp / SPEED_MIN) / Math.log(SPEED_RANGE)); }
 
     var current = 0, speed = 0.7, phase = 0, playing = true, dragging = false, last = 0;
+
+    // ============================================================
+    // 皮肤系统
+    // 每套皮肤只是「一组 CSS 变量 + 一个类名」，几何引擎完全不知道皮肤的存在。
+    // 换肤 = 给 .stage-wrap 换一个 skin-* 类名；配色全部由 CSS 变量接管，
+    // 包括轮廓滤镜的 flood-color（它也读 --outline）。
+    // dots 是选择器上的三色预览（上衣 / 皮肤 / 短裤）。
+    // ============================================================
+    var SKINS = [
+      { id: 'default', name: '默认', cls: '', dots: ['#2563eb', '#2563eb', '#2563eb'] },
+      { id: 'vitality', name: '活力', cls: 'skin-vitality', dots: ['#e8453c', '#f2c9a4', '#23324d'] }
+    ];
+    var SKIN_KEY = 'exfig_skin';
+    var stageWrap = document.querySelector('.stage-wrap');
+    var skinTabs = $('skinTabs');
+    var skinIndex = 0;
+
+    function applySkin(i) {
+      skinIndex = clamp(i, 0, SKINS.length - 1);
+      var sk = SKINS[skinIndex];
+      // 先清掉其它皮肤类，再挂上当前这套（默认皮肤 cls 为空 = 回到 :root 那组变量）
+      SKINS.forEach(function (s) { if (s.cls) stageWrap.classList.remove(s.cls); });
+      if (sk.cls) stageWrap.classList.add(sk.cls);
+      // 更新选择器高亮
+      var chips = skinTabs.querySelectorAll('.skin-chip');
+      for (var k = 0; k < chips.length; k++) {
+        chips[k].setAttribute('aria-pressed', k === skinIndex ? 'true' : 'false');
+      }
+      try { localStorage.setItem(SKIN_KEY, sk.id); } catch (e) {}
+    }
+
+    SKINS.forEach(function (sk, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'skin-chip';
+      b.setAttribute('aria-pressed', 'false');
+      b.innerHTML = '<span class="skin-dots">' +
+        sk.dots.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') +
+        '</span>' + sk.name;
+      b.addEventListener('click', function () { applySkin(i); });
+      skinTabs.appendChild(b);
+    });
+
+    // 恢复上次选择；读不到就用默认皮肤
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem(SKIN_KEY); } catch (e) {}
+      var idx = 0;
+      for (var i = 0; i < SKINS.length; i++) if (SKINS[i].id === saved) idx = i;
+      applySkin(idx);
+    })();
 
     EXERCISES.forEach(function (ex, i) {
       var b = document.createElement('button');
