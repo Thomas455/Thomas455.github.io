@@ -538,7 +538,7 @@
     async function run() {
       if (!pendingFiles.length) { progress.textContent = '请先选择图片'; return; }
       const mode = document.querySelector('input[name="mode"]:checked').value;
-      const targetBytes = parseInt(targetKb.value, 10) * 1024;
+      const rawTarget = parseInt(targetKb.value, 10) * 1024;
       const manualQ = parseInt(quality.value, 10);
 
       goBtn.disabled = true;
@@ -556,7 +556,22 @@
           if (mode === 'manual') {
             res = { blob: await compressManual(img, t.mime, manualQ), quality: manualQ, scale: 1 };
           } else {
+            // 目标大小不能超过原图。
+            // qualitySearch 是「在不超过目标的前提下尽量保留画质」的二分搜索：
+            // 目标大于原图时几乎任何质量都达标，搜索失去下压压力、一路把质量抬到 ~100%，
+            // 而浏览器对 WebP 的 q=1.0 按无损编码，无损 WebP 往往比同尺寸 JPEG 还大，
+            // 于是「压缩」反而把文件压大了（实测 149KB JPEG → 284KB WebP，+90%）。
+            // 把目标封顶到原图大小，搜索就有了真正的约束。
+            const targetBytes = Math.min(rawTarget, file.size);
             res = await compressToSize(img, t.mime, targetBytes);
+            // 兜底：即使封顶后仍可能变大（例如原图本身就是极小的 WebP/PNG，
+            // 或已在低质量下压过的图），这种情况直接保留原图，
+            // 绝不给出一个比原图还大的文件。
+            if (res.blob && res.blob.size > file.size) {
+              res.blob = file;
+              res.cannotShrink = true;
+              res.quality = null;
+            }
           }
           appendResult(file, img, url, res, t, mode);
         } catch (err) {
@@ -581,17 +596,25 @@
 
       const newUrl = URL.createObjectURL(res.blob);
       const nameBase = file.name.replace(/\.[^.]+$/, '');
-      const dlName = nameBase + '_compressed.' + t.ext;
+      // 回退到原图时文件名保持原样，不要叫 _compressed（它并没有被压缩）
+      const dlName = res.cannotShrink ? file.name : (nameBase + '_compressed.' + t.ext);
 
-      let meta = '原 ' + origKB.toFixed(1) + ' KB → 新 ' + newKB.toFixed(1) + ' KB　';
-      meta += ratio >= 0
-        ? '<span class="saved">节省 ' + ratio + '%</span>'
-        : '<span class="grew">变大 ' + (-ratio) + '%</span>';
+      let meta;
+      if (res.cannotShrink) {
+        meta = '原 ' + origKB.toFixed(1) + ' KB　<span class="grew">' +
+          t.ext.toUpperCase() + ' 无法更小，已保留原图</span>';
+      } else {
+        meta = '原 ' + origKB.toFixed(1) + ' KB → 新 ' + newKB.toFixed(1) + ' KB　';
+        meta += ratio >= 0
+          ? '<span class="saved">节省 ' + ratio + '%</span>'
+          : '<span class="grew">变大 ' + (-ratio) + '%</span>';
+      }
 
       let tags = '<span class="badge">' + t.ext.toUpperCase() + '</span>';
+      if (res.cannotShrink) tags += '<span class="badge">未压缩</span>';
       if (t.mime === 'image/png' && mode === 'size') tags += '<span class="badge">无损</span>';
       if (res.quality != null) tags += '<span class="badge">质量 ' + Math.round(res.quality * 100) + '%</span>';
-      if (res.scale < 1) tags += '<span class="badge">尺寸 ' + Math.round(res.scale * 100) + '%</span>';
+      if (res.scale != null && res.scale < 1) tags += '<span class="badge">尺寸 ' + Math.round(res.scale * 100) + '%</span>';
 
       card.innerHTML =
         '<img src="' + newUrl + '" alt="">' +
