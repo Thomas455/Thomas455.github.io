@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Thomas455.github.io 站点地图
+  说明：本仓库部署在域名根目录，因此这份 sitemap 覆盖整个 https://thomas455.github.io/，
+  包含同域下的独立项目站点 /naiwaskywar/（奶娃战机）。
+  lastmod 取自各文件在 git 中的最后一次提交日期（/naiwaskywar/ 取自服务器的 Last-Modified）。
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- 站点级页面 -->
+  <url>
+    <loc>https://thomas455.github.io/</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools.html</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/nav.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- 独立项目站点（同域下的另一个仓库） -->
+  <url>
+    <loc>https://thomas455.github.io/naiwaskywar/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 在线工具 -->
+  <url>
+    <loc>https://thomas455.github.io/tools/exercise-figure.html</loc>
+    <lastmod>2026-10-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/image-compressor.html</loc>
+    <lastmod>2026-10-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/ascii-table.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/base-converter.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/file-transfer.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/hardware-info.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/hash-checker.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/howtofish-guide.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/howtofish-save-editor.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/keyboard-mouse-test.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/mc-player-query.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/mc-server-query.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/qr-tool.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/serial-debugger.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/video-quick-convert.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://thomas455.github.io/tools/video-to-gif.html</loc>
+    <lastmod>2026-08-29</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+</urlset>

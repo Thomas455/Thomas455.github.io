@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# 自定义 404 页没有检索价值，不收录
+Disallow: /404.html
+
+Sitemap: https://thomas455.github.io/sitemap.xml
