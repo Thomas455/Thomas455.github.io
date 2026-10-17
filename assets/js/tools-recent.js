@@ -15,7 +15,8 @@
     'mc-player-query.html': 'MC 玩家查询',
     'mc-server-query.html': 'MC 服务器查询',
     'howtofish-save-editor.html': '渔力全开存档工具',
-    'exercise-figure.html': '运动小人'
+    'exercise-figure.html': '运动小人',
+    'express-ocr.html': '快递 OCR 查找'
   };
   const KEY = 'tools_recent';
   const MAX = 8;

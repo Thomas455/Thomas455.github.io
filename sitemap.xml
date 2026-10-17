@@ -37,6 +37,12 @@
 
   <!-- 在线工具 -->
   <url>
+    <loc>https://thomas455.github.io/tools/express-ocr.html</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://thomas455.github.io/tools/exercise-figure.html</loc>
     <lastmod>2026-10-13</lastmod>
     <changefreq>monthly</changefreq>

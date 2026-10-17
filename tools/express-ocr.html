@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>快递 OCR 查找 · Thomas455</title>
+  <meta name="description" content="基于 OCR 的快递单号识别工具：上传快递货架照片，批量识别快递单号/编号，输入编号即可快速定位是哪一格快递，可筛选、编辑、复制、导出，全部本地处理。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .tool-hero { padding: 56px 0 24px; text-align: center; }
+    .tool-hero h1 { font-size: 1.8rem; margin-bottom: 8px; }
+    .tool-card { padding: 28px; margin-bottom: 24px; }
+    .tool-card h3 { font-size: 1.05rem; margin-bottom: 14px; }
+
+    /* 上传区 */
+    .dropzone {
+      border: 2px dashed rgba(37, 99, 235, 0.35);
+      border-radius: var(--radius);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.35);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.06);
+      color: var(--accent);
+    }
+    .dropzone .dz-main { font-size: 1.05rem; font-weight: 600; margin-bottom: 4px; }
+
+    /* 控件 */
+    .settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px; margin: 22px 0; }
+    .setting label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+    .setting select, .setting input[type="number"] {
+      width: 100%; padding: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 8px; background: rgba(255, 255, 255, 0.6); color: var(--text);
+      font-size: 0.92rem; outline: none;
+    }
+    .setting select:focus, .setting input:focus { border-color: var(--accent); }
+    .check-row { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 6px; font-size: 0.88rem; }
+    .check-row label { display: flex; align-items: center; gap: 6px; font-weight: 400; color: var(--text); cursor: pointer; }
+    .check-row input[type="checkbox"] { accent-color: var(--accent); }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
+    .hint { font-size: 0.78rem; color: var(--muted); margin-top: 8px; }
+
+    .progress { text-align: center; color: var(--muted); font-size: 0.9rem; margin-top: 14px; min-height: 20px; }
+    .bar { height: 6px; border-radius: 999px; background: rgba(37, 99, 235, 0.12); overflow: hidden; margin-top: 8px; }
+    .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+
+    .err { color: #dc2626; font-size: 0.88rem; margin: 6px 0; }
+
+    /* 图片预览 */
+    .previews { margin-top: 20px; }
+    .previews-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.9rem; color: var(--muted); }
+    .previews-head b { color: var(--text); }
+    .btn.sm { padding: 6px 14px; font-size: 0.82rem; }
+    .preview-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 8px; border-radius: 10px; }
+    .preview-item img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.8); flex-shrink: 0; }
+    .p-info { flex: 1; min-width: 0; }
+    .p-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .p-size { font-size: 0.75rem; color: var(--muted); }
+    .p-remove { width: 28px; height: 28px; border: none; border-radius: 8px; background: rgba(239, 68, 68, 0.1); color: #dc2626; font-size: 1.1rem; line-height: 1; cursor: pointer; flex-shrink: 0; }
+    .p-remove:hover { background: rgba(239, 68, 68, 0.2); }
+
+    /* 结果工具栏 */
+    .result-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .result-toolbar input[type="text"] {
+      flex: 1; min-width: 220px; padding: 9px 14px; border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 999px; background: rgba(255, 255, 255, 0.6); font-size: 0.92rem; outline: none; color: var(--text);
+    }
+    .result-toolbar input[type="text"]:focus { border-color: var(--accent); }
+    .stat { font-size: 0.85rem; color: var(--muted); }
+    .stat b { color: var(--text); }
+
+    /* 结果卡片 */
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+    .result-card { display: flex; gap: 14px; padding: 14px; border-radius: var(--radius); align-items: stretch; }
+    .result-card.found { border-color: rgba(5, 150, 105, 0.55); box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.18), 0 8px 24px rgba(31, 35, 40, 0.06); }
+    .thumb { position: relative; width: 176px; flex-shrink: 0; border-radius: 10px; overflow: hidden; background: rgba(0, 0, 0, 0.05); border: 1px solid rgba(255, 255, 255, 0.8); }
+    .thumb canvas { display: block; width: 100%; height: auto; }
+    .thumb .pos { position: absolute; left: 0; top: 0; background: rgba(31, 35, 40, 0.72); color: #fff; font-size: 0.68rem; padding: 2px 7px; border-bottom-right-radius: 6px; }
+    .r-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .r-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.02rem; font-weight: 700; letter-spacing: 0.4px; word-break: break-all; }
+    .r-meta { font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
+    .r-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+    .mini-btn { padding: 4px 11px; font-size: 0.76rem; border-radius: 999px; border: 1px solid rgba(37, 99, 235, 0.35); background: rgba(255, 255, 255, 0.55); color: var(--accent); cursor: pointer; font-weight: 600; }
+    .mini-btn:hover { background: rgba(37, 99, 235, 0.1); }
+    .mini-btn.danger { border-color: rgba(239, 68, 68, 0.35); color: #dc2626; }
+    .mini-btn.danger:hover { background: rgba(239, 68, 68, 0.1); }
+    .conf-bar { height: 4px; border-radius: 999px; background: rgba(37, 99, 235, 0.12); overflow: hidden; }
+    .conf-bar > i { display: block; height: 100%; background: var(--accent); }
+    .conf-bar.low > i { background: #f59e0b; }
+
+    .empty { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 28px 0; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(12px);
+      background: rgba(31, 35, 40, 0.9); color: #fff; padding: 9px 20px; border-radius: 999px;
+      font-size: 0.88rem; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 50;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 640px) {
+      .result-card { flex-direction: column; }
+      .thumb { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="../index.html#projects">项目</a></li>
+        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <a class="back-link" href="../tools.html">← 返回在线工具</a>
+
+    <section class="tool-hero">
+      <h1>快递<span class="accent">OCR 查找</span></h1>
+      <p class="muted">上传快递货架照片，批量识别单号/编号，输入编号即可快速定位是哪一格快递。全部本地处理，图片不会上传。</p>
+    </section>
+
+    <!-- 上传 -->
+    <section class="tool-card glass">
+      <h3>1 · 选择快递货架照片</h3>
+      <div class="dropzone" id="dropzone">
+        <div class="dz-main">点击选择或拖拽图片到这里</div>
+        <div>支持多张：JPG / PNG / WebP，建议把单号拍清楚、尽量正对</div>
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple hidden>
+      </div>
+      <div class="hint">提示：可以一次拍多张（不同货架 / 不同角度），识别结果会自动合并去重。</div>
+
+      <div class="settings">
+        <div class="setting">
+          <label>识别档位</label>
+          <select id="quality">
+            <option value="fast">省流量（语言包 ~2 MB，最快）</option>
+            <option value="balanced" selected>均衡（语言包 ~11 MB，推荐）</option>
+            <option value="accurate">精细（语言包 ~13 MB，慢一点）</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label>单号最少位数</label>
+          <input type="number" id="minLen" value="6" min="3" max="20">
+          <div class="hint">小于该位数的识别结果会被忽略</div>
+        </div>
+        <div class="setting">
+          <label>放大倍数（低清照片可调大）</label>
+          <input type="number" id="upscale" value="2" min="1" max="4" step="0.5">
+        </div>
+      </div>
+
+      <div class="check-row">
+        <label><input type="checkbox" id="optPreprocess" checked> 图像预处理（灰度 / 对比度增强，提升识别率）</label>
+        <label><input type="checkbox" id="optMerge" checked> 合并同一行被拆开的单号</label>
+        <label><input type="checkbox" id="optCourier" checked> 快递公司前缀纠错</label>
+        <label><input type="checkbox" id="optGroup" checked> 按位置聚类同一张图里的多个单号</label>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="goBtn">开始识别</button>
+        <button class="btn btn-outline" id="stopBtn" style="display:none">停止</button>
+      </div>
+      <div class="progress" id="progress"></div>
+      <div class="bar"><i id="barFill"></i></div>
+
+      <div id="previews" class="previews" style="display:none">
+        <div class="previews-head">
+          <span>已添加 <b id="pcount">0</b> 张</span>
+          <button class="btn btn-outline sm" id="clearBtn">清空</button>
+        </div>
+      </div>
+      <div id="errors"></div>
+    </section>
+
+    <!-- 结果 -->
+    <section class="tool-card glass" id="resultCard" style="display:none">
+      <h3>2 · 查找快递</h3>
+      <div class="result-toolbar">
+        <input type="text" id="searchBox" placeholder="输入单号 / 编号关键字，直接定位快递…" autocomplete="off">
+        <span class="stat" id="statBox"></span>
+      </div>
+      <div class="result-toolbar">
+        <button class="mini-btn" id="copyAllBtn">复制全部单号</button>
+        <button class="mini-btn" id="exportCsvBtn">导出 CSV</button>
+        <button class="mini-btn" id="exportJsonBtn">导出 JSON</button>
+        <button class="mini-btn danger" id="clearResultsBtn">清空结果</button>
+      </div>
+      <div class="result-grid" id="resultGrid"></div>
+      <div class="empty" id="emptyBox">还没有识别到快递单号。</div>
+    </section>
+
+    <section class="tool-card glass">
+      <h3>使用说明</h3>
+      <ul style="margin:0;padding-left:20px;color:var(--muted);font-size:0.9rem;line-height:1.9">
+        <li>整个识别过程在浏览器里完成（WebAssembly 版 Tesseract），<b>图片不会上传到任何服务器</b>。</li>
+        <li>第一次使用需要联网下载 OCR 引擎与语言包（约 5–13 MB），之后浏览器会缓存，可离线使用。</li>
+        <li>「合并同一行被拆开的单号」用于处理 <b>SF 7744 5566 8899</b> 这类带空格、被 OCR 拆成多段的单号。</li>
+        <li>「快递公司前缀纠错」会把 <b>ZT0-</b>、<b>$F</b>、<b>Y1T</b> 这类误识别的前缀修正为 <b>ZTO-</b>、<b>SF</b>、<b>YT</b>。</li>
+        <li>识别结果可以编辑：点「编辑」可修正误识别的字符，改完即时生效。</li>
+        <li>缩略图上的绿色高亮框就是单号在照片中的位置，方便你回头去找实物。</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="../assets/js/tools-recent.js"></script>
+  <script>
+    /* ================= 配置 ================= */
+    const CDN = 'https://unpkg.com';
+    const TESS_VER = '5.1.1';
+    const CORE_VER = '5.1.1';
+    const LIB_URL = CDN + '/tesseract.js@' + TESS_VER + '/dist/tesseract.min.js';
+    const WORKER_URL = CDN + '/tesseract.js@' + TESS_VER + '/dist/worker.min.js';
+    const CORE_URL = CDN + '/tesseract.js-core@' + CORE_VER;
+
+    // 档位 -> tessdata 模型 + 多遍扫描参数。
+    // passes 里每一项是「一遍」：up = 相对图片原始尺寸的放大倍数，pre = 是否做预处理。
+    // 无头 Edge 实测（960x932 货架照片，12 个单号）：
+    //   单遍 2× 无预处理        -> 9/12
+    //   单遍 3× 无预处理        -> 10/12
+    //   2× + 3× 无预处理 并集   -> 11~12/12（两遍额外耗时 < 1.5s，非常划算）
+    // 另外两个关键设置（同样来自实测）：
+    //   - tessedit_pageseg_mode = 6：默认的 3（全自动布局）在纯色大背景下经常
+    //     把整张图判成一个块直接放弃，psm 6 能稳定多认出 2 个单号。
+    //   - 放大用最近邻（imageSmoothingEnabled = false）：平滑插值会把已经模糊的
+    //     小字抹得更糊。
+    const PROFILES = {
+      fast: {
+        model: 'fast',
+        passes: [{ up: 2, pre: false }],
+      },
+      balanced: {
+        model: 'std',
+        passes: [{ up: 2, pre: false }, { up: 3, pre: false }],
+      },
+      accurate: {
+        model: 'best',
+        passes: [{ up: 2, pre: false }, { up: 2, pre: true }, { up: 3, pre: false }],
+      },
+    };
+    const MODEL_PATH = {
+      fast: 'https://tessdata.projectnaptha.com/4.0.0_fast',
+      std:  'https://tessdata.projectnaptha.com/4.0.0',
+      best: 'https://tessdata.projectnaptha.com/4.0.0_best',
+    };
+    const LANG_NAME = 'eng';
+
+    /* ================= 元素 ================= */
+    const $ = id => document.getElementById(id);
+    const dropzone = $('dropzone'), fileInput = $('fileInput');
+    const qualitySel = $('quality'), minLenInput = $('minLen'), upscaleInput = $('upscale');
+    const optPre = $('optPreprocess'), optMerge = $('optMerge'), optCourier = $('optCourier'), optGroup = $('optGroup');
+    const goBtn = $('goBtn'), stopBtn = $('stopBtn'), progress = $('progress'), barFill = $('barFill');
+    const errorsEl = $('errors'), previewsEl = $('previews'), pcountEl = $('pcount'), clearBtn = $('clearBtn');
+    const resultCard = $('resultCard'), resultGrid = $('resultGrid'), emptyBox = $('emptyBox');
+    const searchBox = $('searchBox'), statBox = $('statBox');
+    const copyAllBtn = $('copyAllBtn'), exportCsvBtn = $('exportCsvBtn'), exportJsonBtn = $('exportJsonBtn'), clearResultsBtn = $('clearResultsBtn');
+    const toastEl = $('toast');
+
+    let pendingFiles = [];
+    let results = [];
+    let images = [];
+    let worker = null;
+    let stopping = false;
+    let seq = 0;
+
+    $('year').textContent = new Date().getFullYear();
+
+    /* ================= 通用工具 ================= */
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    let toastTimer = null;
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+    }
+
+    async function copyText(text) {
+      try { await navigator.clipboard.writeText(text); return true; }
+      catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+        ta.remove();
+        return ok;
+      }
+    }
+
+    function download(filename, content, mime) {
+      const blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    /* ================= 快递公司字典 ================= */
+    // 常见快递公司英文/数字前缀，用于打标签与纠错
+    const COURIERS = [
+      { name: '顺丰速运', prefix: 'SF' },
+      { name: '京东物流', prefix: 'JD' },
+      { name: '圆通速递', prefix: 'YT' },
+      { name: '中通快递', prefix: 'ZTO' },
+      { name: '韵达速递', prefix: 'YD' },
+      { name: '申通快递', prefix: 'STO' },
+      { name: '邮政 EMS', prefix: 'EMS' },
+      { name: '极兔速递', prefix: 'JT' },
+      { name: '德郑快递', prefix: 'DP' },
+      { name: '丹鸟快递', prefix: 'DN' },
+      { name: 'FedEx', prefix: 'FX' },
+    ];
+
+    function detectCourier(code) {
+      const up = String(code || '').toUpperCase();
+      for (const c of COURIERS) if (up.startsWith(c.prefix)) return c.name;
+      return '';
+    }
+
+    /* ================= 单号归一化与校验 ================= */
+    // 数字区易混字符表：OCR 常把这些字母认成数字
+    const CONFUSIBLE = { O: '0', Q: '0', D: '0', I: '1', L: '1', S: '5', B: '8', Z: '2', G: '6', T: '7', A: '4' };
+    const REVERSE_CONFUSIBLE = {};
+    Object.keys(CONFUSIBLE).forEach(k => {
+      if (!(CONFUSIBLE[k] in REVERSE_CONFUSIBLE)) REVERSE_CONFUSIBLE[CONFUSIBLE[k]] = k;
+    });
+
+    // 归一化：全角转半角、去空格/下划线/点、统一大写
+    function normalizeCode(raw) {
+      let s = String(raw || '').trim();
+      s = s.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+      s = s.replace(/[\s._]/g, '');
+      return s.toUpperCase();
+    }
+
+    // 校验：长度、必须含数字、字符集、排除连续长字母
+    function isValidCode(s, minLen) {
+      if (!s || s.length < minLen) return false;
+      if (!/\d/.test(s)) return false;
+      if (!/^[0-9A-Z\-]+$/.test(s)) return false;
+      if (/^[A-Z]{6,}$/.test(s)) return false;
+      if (/^-|-$/.test(s)) return false;
+      return true;
+    }
+
+    /* ================= 前缀纠错 =================
+       把 OCR 误识别的公司前缀修正为字典里的标准前缀：
+       ZT0-556677 -> ZTO-556677（替换）、Y1T7788990011 -> YT7788990011（多识别了一位数字）、
+       270-556677 -> ZTO-556677（前缀整体被认成数字）
+
+       只在「和标准前缀只差一处」时修，且那一处必须确实像被识错，
+       避免把正常单号改坏（例如 ZTO 不会被改成 YT）。 */
+    function fixCourierPrefix(code) {
+      for (const c of COURIERS) {
+        const p = c.prefix;
+        if (code.length < p.length + 3) continue;      // 前缀后至少要跟几位数字
+        if (code.startsWith(p)) return code;           // 已经正确
+
+        // 1) 替换：前缀区只有一位被识错
+        const head = code.slice(0, p.length);
+        let bad = -1;
+        for (let i = 0; i < p.length; i++) {
+          if (head[i] !== p[i]) { if (bad !== -1) { bad = -2; break; } bad = i; }
+        }
+        if (bad >= 0 && isVisuallySimilar(head[bad], p[bad])) {
+          const cand = p + code.slice(p.length);
+          if (isValidCode(cand, 6)) return cand;
+        }
+
+        // 2) 多识别了一位数字：删掉它之后前缀就对上了
+        //    例如 Y1T... 删掉 '1' → YT...
+        for (let i = 0; i < p.length; i++) {
+          if (!/\d/.test(code[i])) continue;            // 只删数字（OCR 常把字母读成数字）
+          const cand = code.slice(0, i) + code.slice(i + 1);
+          if (cand.startsWith(p) && isValidCode(cand, 6)) return cand;
+        }
+
+        // 3) 前缀整体被认成数字（如 ZTO -> 270）：每一位都要「像」对应标准字符
+        //    且至少有一位确实不同，才允许整体替换
+        if (bad === -2) {
+          let allSimilar = true, anyDiff = false;
+          for (let i = 0; i < p.length; i++) {
+            if (head[i] !== p[i]) anyDiff = true;
+            if (!isVisuallySimilar(head[i], p[i])) { allSimilar = false; break; }
+          }
+          if (allSimilar && anyDiff) {
+            const cand = p + code.slice(p.length);
+            if (isValidCode(cand, 6)) return cand;
+          }
+        }
+      }
+      return code;
+    }
+
+    // 判断两个字符是否「容易被 OCR 识错」（双向）
+    // 覆盖：数字之间、字母<->数字（O<->0、Z<->2）、形近字母（O<->Q、I<->L）
+    function isVisuallySimilar(a, b) {
+      if (a === b) return true;
+      if (/\d/.test(a) && /\d/.test(b)) return true;   // 数字之间（0<->8、1<->7 之类）
+      if (CONFUSIBLE[a] === b) return true;            // 字母 -> 数字（O->0、Z->2、S->5）
+      if (CONFUSIBLE[b] === a) return true;            // 数字 -> 字母（0->O、2->Z）
+      const NEAR = { O: 'Q', Q: 'O', I: 'L', L: 'I', Z: '7', S: '8', B: '6', G: '0' };
+      if (NEAR[a] === b || NEAR[b] === a) return true;
+      return false;
+    }
+
+    /* ================= 数字区易混字符纠正 =================
+       分段处理（按 '-' 切）：
+       - 首段：保留开头的公司字母前缀，只把前缀之后「本该是数字」的字母改成数字
+       - 含数字的段：整串本该是数字，把易混字母统一成数字
+       - 纯字母段：是字母后缀（如 ABCDE），把被认成数字的字符改回字母
+       这样 NO-12345-ABCDE 不会被改成 NO-12345-4BCDE。 */
+    function fixConfusable(code) {
+      return code.split('-').map((seg, i) => {
+        if (i === 0) {
+          // 首段：保留开头的公司字母前缀，只修前缀之后的字符
+          const m = /^([A-Z]+)/.exec(seg);
+          const keep = m ? m[0].length : 0;
+          let rest = '';
+          for (const ch of seg.slice(keep)) rest += (CONFUSIBLE[ch] !== undefined) ? CONFUSIBLE[ch] : ch;
+          return seg.slice(0, keep) + rest;
+        }
+        if (/\d/.test(seg)) {
+          // 含数字 → 这一串本该是数字，把易混字母统一成数字
+          let out = '';
+          for (const ch of seg) out += (CONFUSIBLE[ch] !== undefined) ? CONFUSIBLE[ch] : ch;
+          return out;
+        }
+        // 纯字母段 → 字母后缀，把被认成数字的字符改回字母
+        let out = '';
+        for (const ch of seg) out += (REVERSE_CONFUSIBLE[ch] !== undefined) ? REVERSE_CONFUSIBLE[ch] : ch;
+        return out;
+      }).join('-');
+    }
+
+    // 完整纠错流水线：先修前缀，再修数字区
+    function canonicalize(code) {
+      return fixConfusable(fixCourierPrefix(code));
+    }
+
+    /* ================= 图像预处理 ================= */
+    // 按倍数放大后（可选）做灰度 + 1%/99% 直方图对比度拉伸。
+    // 放大用最近邻插值，避免浏览器把已经模糊的小字抹得更糊。
+    function preprocess(src, opts) {
+      const up = Math.max(1, Math.min(4, opts.up || 1));
+      const w = Math.max(1, Math.round(src.width * up));
+      const h = Math.max(1, Math.round(src.height * up));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = up === 1;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(src, 0, 0, w, h);
+      if (!opts.preprocess) return canvas;
+
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const d = imgData.data;
+      const n = w * h;
+      const hist = new Uint32Array(256);
+      for (let i = 0; i < n; i++) {
+        hist[(d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000 | 0]++;
+      }
+      let lo = 0, hi = 255, acc = 0;
+      const cut = Math.max(1, Math.floor(n * 0.01));
+      for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc > cut) { lo = i; break; } }
+      acc = 0;
+      for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc > cut) { hi = i; break; } }
+      if (hi <= lo) { lo = 0; hi = 255; }
+      const range = Math.max(1, hi - lo);
+      const lut = new Uint8Array(256);
+      for (let i = 0; i < 256; i++) {
+        let v = (i - lo) / range * 255;
+        lut[i] = v < 0 ? 0 : (v > 255 ? 255 : v);
+      }
+      for (let i = 0; i < n; i++) {
+        const v = lut[(d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000 | 0];
+        d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v;
+        d[i * 4 + 3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      return canvas;
+    }
+
+    /* ================= OCR 引擎管理 ================= */
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        if (window.Tesseract) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('OCR 引擎加载失败，请检查网络后刷新页面'));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function ensureWorker(modelKey) {
+      await loadScript(LIB_URL);
+      const langPath = MODEL_PATH[modelKey] || MODEL_PATH.std;
+      if (worker && worker.__model === modelKey) return worker;
+      if (worker) { try { await worker.terminate(); } catch (e) {} worker = null; }
+      worker = await Tesseract.createWorker(LANG_NAME, 1, {
+        workerPath: WORKER_URL,
+        langPath: langPath,
+        corePath: CORE_URL,
+        gzip: true,
+        logger: () => {},
+      });
+      // 页面分割模式 6 = 「假设是统一的一列文本」。
+      // 货架照片文字分散在多个格子里，默认的 psm 3（全自动布局分析）经常把
+      // 整张图判成一个块而直接放弃；实测 psm 6 在同样的 12 单号照片上
+      // 从 8/12 提升到 10/12，且对纯色大背景更稳。
+      try { await worker.setParameters({ tessedit_pageseg_mode: '6' }); } catch (e) {}
+      worker.__model = modelKey;
+      return worker;
+    }
+
+    /* ================= 单号提取 ================= */
+    // 预筛选：候选 token 只要「像单号片段」就留下，最终长度校验放在合并之后。
+    // 这样 "SF" 这种 2 位的公司前缀不会被 minLen 提前砍掉，才能和后面的数字段合并。
+    function looksLikeToken(s) {
+      if (s.length < 2) return false;
+      if (!/^[0-9A-Z\-]+$/.test(s)) return false;
+      if (/\d/.test(s)) return true;                       // 含数字
+      return COURIERS.some(c => c.prefix === s);           // 或本身是公司前缀
+    }
+
+    // 从 OCR 的 word 列表里筛出候选单号
+    function collectCandidates(data, opts) {
+      const words = (data && data.words) || [];
+      const out = [];
+      words.forEach(wd => {
+        const raw = (wd.text || '').trim();
+        if (!raw) return;
+        const b = wd.bbox || null;
+        if (b) {
+          const bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+          if (bw * bh < 20) return;              // 太小，通常是噪点
+          if (bh < 5 || bw < 8) return;          // 细线/噪点
+        }
+        const norm = normalizeCode(raw);
+        if (!looksLikeToken(norm)) return;
+        out.push({
+          code: canonicalize(norm),
+          raw: norm,
+          conf: Math.max(0, Math.min(100, wd.confidence || 0)),
+          bbox: b,
+        });
+      });
+      return out;
+    }
+
+    // 合并同一行里被空格拆开的单号：SF 7744 5566 8899 -> SF774455668899
+    function mergeLineWords(list, opts) {
+      if (list.length < 2) return list;
+      // 按行（y 中点）排序，再按 x 排序
+      const sorted = list.slice().sort((a, b) => {
+        const ay = a.bbox ? (a.bbox.y0 + a.bbox.y1) / 2 : 0;
+        const by = b.bbox ? (b.bbox.y0 + b.bbox.y1) / 2 : 0;
+        if (Math.abs(ay - by) > 6) return ay - by;
+        return (a.bbox ? a.bbox.x0 : 0) - (b.bbox ? b.bbox.x0 : 0);
+      });
+      const merged = [];
+      let cur = null;
+      const pushCur = () => { if (cur) { merged.push(cur); cur = null; } };
+
+      for (const it of sorted) {
+        if (!it.bbox) { pushCur(); merged.push(it); continue; }
+        if (!cur) { cur = { ...it }; continue; }
+
+        const midY = (it.bbox.y0 + it.bbox.y1) / 2;
+        const curMidY = (cur.bbox.y0 + cur.bbox.y1) / 2;
+        const hgt = Math.max(4, Math.max(it.bbox.y1 - it.bbox.y0, cur.bbox.y1 - cur.bbox.y0));
+        const sameLine = Math.abs(midY - curMidY) <= Math.max(4, hgt * 0.6);
+        const gap = it.bbox.x0 - cur.bbox.x1;
+        const closeEnough = gap <= Math.max(7, hgt * 0.9);
+        const candidate = cur.code + it.code;
+        const wouldBeValid = candidate.length <= 26 && looksMergeable(cur.code) && looksMergeable(it.code);
+
+        if (sameLine && closeEnough && wouldBeValid) {
+          cur = {
+            code: candidate,
+            raw: cur.raw + it.raw,
+            conf: Math.min(cur.conf, it.conf),
+            bbox: {
+              x0: Math.min(cur.bbox.x0, it.bbox.x0),
+              y0: Math.min(cur.bbox.y0, it.bbox.y0),
+              x1: Math.max(cur.bbox.x1, it.bbox.x1),
+              y1: Math.max(cur.bbox.y1, it.bbox.y1),
+            },
+          };
+        } else {
+          pushCur();
+          cur = { ...it };
+        }
+      }
+      pushCur();
+      return merged;
+    }
+
+    // 一段 token 是否适合参与行合并：要么是纯公司前缀，要么含数字
+    function looksMergeable(code) {
+      if (/\d/.test(code)) return true;
+      return COURIERS.some(c => c.prefix === code);
+    }
+
+    // 按位置聚类：同一张图里纵向间距大的归为不同组
+    function groupByPosition(list) {
+      const GAP = 70;
+      const sorted = list.slice().sort((a, b) => (a.bbox ? a.bbox.y0 : 0) - (b.bbox ? b.bbox.y0 : 0));
+      let group = 0, lastY = null;
+      sorted.forEach(it => {
+        const y = it.bbox ? it.bbox.y0 : 0;
+        if (lastY === null || Math.abs(y - lastY) > GAP) { group++; lastY = y; }
+        it.group = group;
+      });
+      return sorted;
+    }
+
+    /* ================= 主流程 ================= */
+    function setProgress(text, pct) {
+      progress.textContent = text || '';
+      barFill.style.width = (pct == null ? 0 : Math.round(pct * 100)) + '%';
+    }
+
+    async function run() {
+      if (!pendingFiles.length) { setProgress('请先选择照片'); return; }
+      const profile = PROFILES[qualitySel.value] || PROFILES.balanced;
+      const minLen = Math.max(3, Math.min(20, parseInt(minLenInput.value, 10) || 6));
+      const userUp = Math.max(1, Math.min(4, parseFloat(upscaleInput.value) || 1));
+      // 用户放大倍数叠加到每一遍上
+      const passes = profile.passes.map(p => ({ up: Math.min(4, p.up * userUp), pre: p.pre }));
+      const doPre = optPre.checked;
+      const doMerge = optMerge.checked;
+      const doCourier = optCourier.checked;
+      const doGroup = optGroup.checked;
+
+      goBtn.disabled = true;
+      stopBtn.style.display = '';
+      stopping = false;
+      results = [];
+      images.forEach(im => { try { URL.revokeObjectURL(im.url); } catch (e) {} });
+      images = [];
+      errorsEl.innerHTML = '';
+      resultGrid.innerHTML = '';
+      resultCard.style.display = 'none';
+
+      const total = pendingFiles.length;
+      const t0 = performance.now();
+
+      for (let i = 0; i < pendingFiles.length; i++) {
+        if (stopping) break;
+        const file = pendingFiles[i];
+        const frac = i / total;
+        setProgress('正在识别 ' + (i + 1) + ' / ' + total + '：' + file.name, frac);
+        try {
+          const { img, url } = await decodeFile(file);
+          const imgId = 'img-' + (i + 1);
+          images.push({ id: imgId, name: file.name, url, source: img, w: img.naturalWidth, h: img.naturalHeight });
+
+          setProgress('正在识别 ' + (i + 1) + ' / ' + total + '：' + file.name + '（加载 OCR 引擎…）', frac);
+          const w = await ensureWorker(profile.model);
+
+          // 多档位扫描：同一张图用不同的放大倍数/预处理各识别一次，取并集。
+          // 实测单张货架照片：单遍 8/12，两遍并集 10/12（无预处理 2× + 无预处理 3×）。
+          const passes = profile.passes;
+          const acc = new Map();   // code -> {conf, bbox(以第一遍为基准), raw}
+          for (let pi = 0; pi < passes.length && !stopping; pi++) {
+            const pc = passes[pi];
+            setProgress('正在识别 ' + (i + 1) + ' / ' + total + '：' + file.name +
+              (passes.length > 1 ? '（第 ' + (pi + 1) + '/' + passes.length + ' 遍）' : ''), frac);
+            const canvas = preprocess(img, {
+              up: pc.up,
+              preprocess: doPre && pc.pre,
+            });
+            const scaleX = img.naturalWidth / canvas.width;
+            const scaleY = img.naturalHeight / canvas.height;
+            const { data } = await w.recognize(canvas);
+
+            let found = collectCandidates(data, { minLen });
+            if (doMerge) found = mergeLineWords(found, { minLen });
+            found = found.filter(f => isValidCode(f.code, minLen));
+            if (doCourier) found = found.map(f => ({ ...f, code: fixCourierPrefix(f.code) }));
+            found = found.filter(f => isValidCode(f.code, minLen));
+            if (doGroup) found = groupByPosition(found);
+
+            found.forEach(f => {
+              const prev = acc.get(f.code);
+              if (!prev) {
+                acc.set(f.code, {
+                  code: f.code,
+                  raw: f.raw,
+                  conf: f.conf,
+                  group: f.group || null,
+                  bbox: f.bbox ? {
+                    x: Math.max(0, Math.round(f.bbox.x0 * scaleX)),
+                    y: Math.max(0, Math.round(f.bbox.y0 * scaleY)),
+                    w: Math.max(1, Math.round((f.bbox.x1 - f.bbox.x0) * scaleX)),
+                    h: Math.max(1, Math.round((f.bbox.y1 - f.bbox.y0) * scaleY)),
+                  } : null,
+                });
+              } else if (f.conf > prev.conf) {
+                prev.conf = f.conf;
+                prev.raw = f.raw;
+              }
+            });
+          }
+
+          const found = Array.from(acc.values());
+          found.forEach(f => {
+            results.push({
+              id: 'r' + (++seq),
+              code: f.code,
+              raw: f.raw,
+              conf: f.conf,
+              imageId: imgId,
+              group: f.group,
+              box: f.bbox,
+              courier: detectCourier(f.code),
+              edited: false,
+            });
+          });
+
+          if (!found.length) {
+            const d = document.createElement('div');
+            d.className = 'err';
+            d.textContent = '✗ ' + file.name + '：没有识别到符合要求的单号（可尝试换档位 / 增大放大倍数）';
+            errorsEl.appendChild(d);
+          }
+        } catch (err) {
+          const d = document.createElement('div');
+          d.className = 'err';
+          d.textContent = '✗ ' + file.name + '：' + (err && err.message ? err.message : err);
+          errorsEl.appendChild(d);
+        }
+        setProgress('正在识别 ' + (i + 1) + ' / ' + total, (i + 1) / total);
+      }
+
+      if (worker) { try { await worker.terminate(); } catch (e) {} worker = null; }
+      goBtn.disabled = false;
+      stopBtn.style.display = 'none';
+
+      results = dedupe(results);
+
+      const secs = ((performance.now() - t0) / 1000).toFixed(1);
+      setProgress((stopping ? '已停止' : '识别完成') + '：共 ' + results.length + ' 个单号，用时 ' + secs + ' 秒', 1);
+      pendingFiles = [];
+      renderPreviews();
+      renderResults();
+    }
+
+    // 跨图去重：同一单号保留置信度最高的一条
+    function dedupe(list) {
+      const best = new Map();
+      for (const it of list) {
+        const prev = best.get(it.code);
+        if (!prev || it.conf > prev.conf) best.set(it.code, it);
+      }
+      return Array.from(best.values()).sort((a, b) => b.conf - a.conf);
+    }
+
+    async function decodeFile(file) {
+      const url = URL.createObjectURL(file);
+      const img = await new Promise((resolve, reject) => {
+        const im = new Image();
+        im.onload = () => resolve(im);
+        im.onerror = () => reject(new Error('无法解码该图片'));
+        im.src = url;
+      });
+      return { img, url };
+    }
+
+    /* ================= 预览列表 ================= */
+    function renderPreviews() {
+      if (!pendingFiles.length) { previewsEl.style.display = 'none'; return; }
+      previewsEl.style.display = '';
+      pcountEl.textContent = pendingFiles.length;
+      previewsEl.querySelectorAll('.preview-item').forEach(el => el.remove());
+      pendingFiles.forEach((f, i) => {
+        const item = document.createElement('div');
+        item.className = 'preview-item glass';
+        const url = URL.createObjectURL(f);
+        const kb = f.size / 1024;
+        item.innerHTML =
+          '<img src="' + url + '" alt="">' +
+          '<div class="p-info">' +
+            '<div class="p-name">' + esc(f.name) + '</div>' +
+            '<div class="p-size">' + kb.toFixed(1) + ' KB</div>' +
+          '</div>' +
+          '<button class="p-remove" title="移除">×</button>';
+        item.querySelector('.p-remove').addEventListener('click', () => {
+          pendingFiles.splice(i, 1);
+          renderPreviews();
+        });
+        previewsEl.appendChild(item);
+      });
+    }
+
+    clearBtn.addEventListener('click', () => { pendingFiles = []; renderPreviews(); });
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      addFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
+
+    function addFiles(files) {
+      const imgs = Array.from(files).filter(f => f.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(f.name));
+      if (!imgs.length) { setProgress('没有可用的图片文件'); return; }
+      pendingFiles = pendingFiles.concat(imgs);
+      setProgress('已选择 ' + pendingFiles.length + ' 张照片');
+      renderPreviews();
+    }
+
+    /* ================= 结果渲染 ================= */
+    function matchesQuery(r, q) {
+      const img = images.find(im => im.id === r.imageId) || {};
+      return r.code.toLowerCase().includes(q) ||
+        (r.raw || '').toLowerCase().includes(q) ||
+        (r.courier || '').toLowerCase().includes(q) ||
+        (img.name || '').toLowerCase().includes(q);
+    }
+
+    function currentResults() {
+      const q = searchBox.value.trim().toLowerCase();
+      return q ? results.filter(r => matchesQuery(r, q)) : results;
+    }
+
+    function renderResults() {
+      const list = currentResults();
+      const q = searchBox.value.trim().toLowerCase();
+      resultCard.style.display = '';
+      statBox.innerHTML = '共 <b>' + results.length + '</b> 个单号' +
+        (list.length !== results.length ? '，匹配 <b>' + list.length + '</b> 个' : '');
+      if (!list.length) {
+        emptyBox.style.display = '';
+        emptyBox.textContent = results.length ? '没有匹配的单号，换个关键字试试。' : '还没有识别到快递单号。';
+      } else {
+        emptyBox.style.display = 'none';
+        emptyBox.textContent = '';
+      }
+      resultGrid.innerHTML = '';
+
+      list.forEach(r => {
+        const img = images.find(im => im.id === r.imageId);
+        const isHit = !!q && matchesQuery(r, q);
+        const card = document.createElement('div');
+        card.className = 'result-card glass' + (isHit ? ' found' : '');
+
+        const lowConf = r.conf < 60;
+        card.innerHTML =
+          '<div class="thumb">' +
+            (img ? '<canvas></canvas>' : '') +
+            '<span class="pos">' + esc(r.group ? ('组 ' + r.group) : ('#' + r.id.slice(1))) + '</span>' +
+          '</div>' +
+          '<div class="r-main">' +
+            '<div class="r-code" data-role="code">' + esc(r.code) + '</div>' +
+            '<div class="conf-bar' + (lowConf ? ' low' : '') + '"><i style="width:' + Math.round(r.conf) + '%"></i></div>' +
+            '<div class="r-meta">置信度 ' + Math.round(r.conf) + '%' +
+              (r.courier ? ' · <span class="badge">' + esc(r.courier) + '</span>' : '') +
+              (r.edited ? ' · <span class="badge">已编辑</span>' : '') +
+              (img ? '<br>来源：' + esc(img.name) + (r.box ? '（位置 ' + r.box.x + ',' + r.box.y + '）' : '') : '') +
+            '</div>' +
+            '<div class="r-actions">' +
+              '<button class="mini-btn" data-act="copy">复制</button>' +
+              '<button class="mini-btn" data-act="locate">定位</button>' +
+              '<button class="mini-btn" data-act="edit">编辑</button>' +
+              '<button class="mini-btn danger" data-act="del">删除</button>' +
+            '</div>' +
+          '</div>';
+        resultGrid.appendChild(card);
+
+        if (img && img.source) drawThumb(card.querySelector('canvas'), img, r);
+
+        card.querySelector('[data-act="copy"]').addEventListener('click', async () => {
+          toast(await copyText(r.code) ? '已复制 ' + r.code : '复制失败，请手动选择');
+        });
+        card.querySelector('[data-act="locate"]').addEventListener('click', () => {
+          searchBox.value = r.code;
+          renderResults();
+          const target = resultGrid.querySelector('.result-card.found');
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          toast('已定位 ' + r.code);
+        });
+        card.querySelector('[data-act="edit"]').addEventListener('click', () => {
+          const next = window.prompt('修正单号：', r.code);
+          if (next == null) return;
+          const norm = normalizeCode(next);
+          if (!norm) { toast('单号不能为空'); return; }
+          r.code = norm;
+          r.edited = true;
+          r.courier = detectCourier(r.code);
+          renderResults();
+        });
+        card.querySelector('[data-act="del"]').addEventListener('click', () => {
+          results = results.filter(x => x.id !== r.id);
+          renderResults();
+        });
+      });
+    }
+
+    // 在原图缩放图上画出单号位置高亮框
+    function drawThumb(canvas, img, r) {
+      if (!canvas) return;
+      const MAXW = 320;
+      const scale = Math.min(1, MAXW / img.w);
+      const w = Math.max(1, Math.round(img.w * scale));
+      const h = Math.max(1, Math.round(img.h * scale));
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img.source, 0, 0, w, h);
+      if (r.box) {
+        const pad = Math.max(2, r.box.h * 0.18 * scale);
+        const x = r.box.x * scale, y = r.box.y * scale;
+        const bw = r.box.w * scale, bh = r.box.h * scale;
+        ctx.fillStyle = 'rgba(5,150,105,0.20)';
+        ctx.fillRect(x - pad, y - pad, bw + pad * 2, bh + pad * 2);
+        ctx.strokeStyle = '#059669';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - pad, y - pad, bw + pad * 2, bh + pad * 2);
+      }
+    }
+
+    searchBox.addEventListener('input', renderResults);
+    searchBox.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const hit = currentResults()[0];
+        if (hit) {
+          const target = resultGrid.querySelector('.result-card.found');
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          toast('定位到 ' + hit.code);
+        } else {
+          toast('没有匹配的单号');
+        }
+      }
+    });
+
+    copyAllBtn.addEventListener('click', async () => {
+      if (!results.length) { toast('还没有结果'); return; }
+      const list = currentResults();
+      const text = list.map(r => r.code).join('\n');
+      toast(await copyText(text) ? '已复制 ' + list.length + ' 个单号' : '复制失败');
+    });
+
+    exportCsvBtn.addEventListener('click', () => {
+      if (!results.length) { toast('还没有结果'); return; }
+      const rows = [['单号', '置信度', '快递公司', '来源图片', '位置X', '位置Y', '已编辑']];
+      currentResults().forEach(r => {
+        const img = images.find(im => im.id === r.imageId) || {};
+        rows.push([r.code, Math.round(r.conf), r.courier || '', img.name || '',
+          r.box ? r.box.x : '', r.box ? r.box.y : '', r.edited ? '是' : '']);
+      });
+      const csv = '\uFEFF' + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+      download('快递单号-' + new Date().toISOString().slice(0, 10) + '.csv', csv, 'text/csv;charset=utf-8');
+      toast('已导出 CSV');
+    });
+
+    exportJsonBtn.addEventListener('click', () => {
+      if (!results.length) { toast('还没有结果'); return; }
+      const payload = currentResults().map(r => {
+        const img = images.find(im => im.id === r.imageId) || {};
+        return {
+          code: r.code,
+          raw: r.raw || null,
+          confidence: Math.round(r.conf),
+          courier: r.courier || null,
+          edited: !!r.edited,
+          source: img.name || null,
+          position: r.box || null,
+        };
+      });
+      download('快递单号-' + new Date().toISOString().slice(0, 10) + '.json',
+        JSON.stringify({ exportedAt: new Date().toISOString(), count: payload.length, items: payload }, null, 2),
+        'application/json');
+      toast('已导出 JSON');
+    });
+
+    clearResultsBtn.addEventListener('click', () => {
+      results = [];
+      searchBox.value = '';
+      errorsEl.innerHTML = '';
+      renderResults();
+      setProgress('');
+    });
+
+    goBtn.addEventListener('click', run);
+    stopBtn.addEventListener('click', () => { stopping = true; toast('正在停止…'); });
+
+    window.addEventListener('beforeunload', () => {
+      images.forEach(im => { try { URL.revokeObjectURL(im.url); } catch (e) {} });
+    });
+  </script>
+  <script src="../assets/js/baidu-analytics.js"></script>
+</body>
+</html>
