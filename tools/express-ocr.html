@@ -2,276 +2,500 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>快递 OCR 查找 · Thomas455</title>
-  <meta name="description" content="基于 OCR 的快递单号识别工具：上传快递货架照片，批量识别快递单号/编号，输入编号即可快速定位是哪一格快递，可筛选、编辑、复制、导出，全部本地处理。">
+  <meta name="description" content="摄像头实时 OCR 找快递：全屏扫货架，识别到的单号当场用红框标出；输入自己的单号，命中时高亮提示。全程本地处理，画面不上传。">
   <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
-    .tool-hero { padding: 56px 0 24px; text-align: center; }
-    .tool-hero h1 { font-size: 1.8rem; margin-bottom: 8px; }
-    .tool-card { padding: 28px; margin-bottom: 24px; }
-    .tool-card h3 { font-size: 1.05rem; margin-bottom: 14px; }
+    :root {
+      --cam-bg: #0b0d10;
+      --hit: #ef4444;
+      --hit-strong: #dc2626;
+    }
 
-    /* 上传区 */
-    .dropzone {
-      border: 2px dashed rgba(37, 99, 235, 0.35);
-      border-radius: var(--radius);
-      padding: 40px 20px;
+    /* ===== 全屏应用布局 ===== */
+    html, body { height: 100%; }
+    body.ocr-app {
+      overflow: hidden;
+      height: 100vh;
+      height: 100dvh;
+      background: var(--cam-bg);
+      color: #e6edf3;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body.ocr-app .site-header,
+    body.ocr-app .site-footer { display: none; }
+    body.ocr-app a { color: #93c5fd; }
+
+    /* ===== 摄像头舞台 ===== */
+    .stage {
+      position: fixed; inset: 0;
+      background: var(--cam-bg);
+      overflow: hidden;
+      z-index: 1;
+    }
+    .stage video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .stage canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    .cam-off {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      background: radial-gradient(circle at 50% 40%, #1b2029 0%, #0b0d10 70%);
+      color: rgba(230, 237, 243, 0.6);
+      font-size: 0.92rem;
       text-align: center;
+      padding: 24px;
+    }
+    .cam-off .big { font-size: 3rem; line-height: 1; }
+    .cam-off .tip { font-size: 0.8rem; max-width: 420px; line-height: 1.7; color: rgba(230, 237, 243, 0.42); }
+
+    /* ===== 顶栏 ===== */
+    .topbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 20;
+      display: flex; align-items: center; gap: 10px;
+      padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 10px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0) 100%);
+      pointer-events: none;
+    }
+    .topbar > * { pointer-events: auto; }
+    .topbar .back {
+      width: 38px; height: 38px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #fff !important;
+      font-size: 1.1rem;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+    .topbar .back:hover { background: rgba(255, 255, 255, 0.22); }
+    .topbar .title {
+      font-size: 0.95rem; font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+      flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .icon-btn {
+      width: 38px; height: 38px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #fff;
+      font-size: 1.05rem;
       cursor: pointer;
-      color: var(--muted);
-      background: rgba(255, 255, 255, 0.35);
-      transition: border-color 0.2s, background 0.2s;
     }
-    .dropzone:hover, .dropzone.dragover {
-      border-color: var(--accent);
-      background: rgba(37, 99, 235, 0.06);
-      color: var(--accent);
+    .icon-btn:hover { background: rgba(255, 255, 255, 0.22); }
+
+    /* ===== 单号输入条 ===== */
+    .targetbar {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 58px);
+      left: 14px; right: 14px;
+      z-index: 22;
+      display: flex; align-items: center; gap: 8px;
     }
-    .dropzone .dz-main { font-size: 1.05rem; font-weight: 600; margin-bottom: 4px; }
-
-    /* 控件 */
-    .settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px; margin: 22px 0; }
-    .setting label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
-    .setting select, .setting input[type="number"] {
-      width: 100%; padding: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.8);
-      border-radius: 8px; background: rgba(255, 255, 255, 0.6); color: var(--text);
-      font-size: 0.92rem; outline: none;
+    .targetbar .field {
+      flex: 1; min-width: 0;
+      position: relative;
+      display: flex; align-items: center;
     }
-    .setting select:focus, .setting input:focus { border-color: var(--accent); }
-    .check-row { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 6px; font-size: 0.88rem; }
-    .check-row label { display: flex; align-items: center; gap: 6px; font-weight: 400; color: var(--text); cursor: pointer; }
-    .check-row input[type="checkbox"] { accent-color: var(--accent); }
-
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
-    .hint { font-size: 0.78rem; color: var(--muted); margin-top: 8px; }
-
-    .progress { text-align: center; color: var(--muted); font-size: 0.9rem; margin-top: 14px; min-height: 20px; }
-    .bar { height: 6px; border-radius: 999px; background: rgba(37, 99, 235, 0.12); overflow: hidden; margin-top: 8px; }
-    .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
-
-    .err { color: #dc2626; font-size: 0.88rem; margin: 6px 0; }
-
-    /* 图片预览 */
-    .previews { margin-top: 20px; }
-    .previews-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.9rem; color: var(--muted); }
-    .previews-head b { color: var(--text); }
-    .btn.sm { padding: 6px 14px; font-size: 0.82rem; }
-    .preview-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 8px; border-radius: 10px; }
-    .preview-item img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.8); flex-shrink: 0; }
-    .p-info { flex: 1; min-width: 0; }
-    .p-name { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .p-size { font-size: 0.75rem; color: var(--muted); }
-    .p-remove { width: 28px; height: 28px; border: none; border-radius: 8px; background: rgba(239, 68, 68, 0.1); color: #dc2626; font-size: 1.1rem; line-height: 1; cursor: pointer; flex-shrink: 0; }
-    .p-remove:hover { background: rgba(239, 68, 68, 0.2); }
-
-    /* 结果工具栏 */
-    .result-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
-    .result-toolbar input[type="text"] {
-      flex: 1; min-width: 220px; padding: 9px 14px; border: 1px solid rgba(255, 255, 255, 0.8);
-      border-radius: 999px; background: rgba(255, 255, 255, 0.6); font-size: 0.92rem; outline: none; color: var(--text);
+    .targetbar input {
+      width: 100%;
+      padding: 11px 38px 11px 38px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(15, 18, 23, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      color: #fff;
+      font-size: 0.92rem;
+      letter-spacing: 0.5px;
+      outline: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
-    .result-toolbar input[type="text"]:focus { border-color: var(--accent); }
-    .stat { font-size: 0.85rem; color: var(--muted); }
-    .stat b { color: var(--text); }
+    .targetbar input::placeholder { color: rgba(255, 255, 255, 0.42); font-family: inherit; letter-spacing: 0; }
+    .targetbar input:focus { border-color: rgba(239, 68, 68, 0.85); box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22); }
+    .targetbar .lens {
+      position: absolute; left: 13px;
+      font-size: 0.95rem; opacity: 0.6;
+      pointer-events: none;
+    }
+    .targetbar .clear {
+      position: absolute; right: 8px;
+      width: 22px; height: 22px;
+      border: none; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff; font-size: 0.8rem; line-height: 1;
+      cursor: pointer;
+      display: none;
+    }
+    .targetbar .clear.show { display: block; }
 
-    /* 结果卡片 */
-    .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
-    .result-card { display: flex; gap: 14px; padding: 14px; border-radius: var(--radius); align-items: stretch; }
-    .result-card.found { border-color: rgba(5, 150, 105, 0.55); box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.18), 0 8px 24px rgba(31, 35, 40, 0.06); }
-    .thumb { position: relative; width: 176px; flex-shrink: 0; border-radius: 10px; overflow: hidden; background: rgba(0, 0, 0, 0.05); border: 1px solid rgba(255, 255, 255, 0.8); }
-    .thumb canvas { display: block; width: 100%; height: auto; }
-    .thumb .pos { position: absolute; left: 0; top: 0; background: rgba(31, 35, 40, 0.72); color: #fff; font-size: 0.68rem; padding: 2px 7px; border-bottom-right-radius: 6px; }
-    .r-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-    .r-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.02rem; font-weight: 700; letter-spacing: 0.4px; word-break: break-all; }
-    .r-meta { font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
-    .r-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
-    .mini-btn { padding: 4px 11px; font-size: 0.76rem; border-radius: 999px; border: 1px solid rgba(37, 99, 235, 0.35); background: rgba(255, 255, 255, 0.55); color: var(--accent); cursor: pointer; font-weight: 600; }
-    .mini-btn:hover { background: rgba(37, 99, 235, 0.1); }
-    .mini-btn.danger { border-color: rgba(239, 68, 68, 0.35); color: #dc2626; }
-    .mini-btn.danger:hover { background: rgba(239, 68, 68, 0.1); }
-    .conf-bar { height: 4px; border-radius: 999px; background: rgba(37, 99, 235, 0.12); overflow: hidden; }
-    .conf-bar > i { display: block; height: 100%; background: var(--accent); }
-    .conf-bar.low > i { background: #f59e0b; }
+    /* ===== 命中横幅 ===== */
+    /* 放在顶部单号栏下方，避免遮挡底部抽屉与画面上方的单号 */
+    .found-banner {
+      position: fixed; left: 50%;
+      top: calc(env(safe-area-inset-top, 0px) + 112px);
+      transform: translateX(-50%) scale(0.9);
+      z-index: 30;
+      padding: 13px 26px;
+      border-radius: 16px;
+      background: rgba(220, 38, 38, 0.95);
+      color: #fff;
+      font-size: 1rem; font-weight: 800;
+      letter-spacing: 0.5px;
+      text-align: center;
+      box-shadow: 0 12px 44px rgba(220, 38, 38, 0.55);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      max-width: 88vw;
+      word-break: break-all;
+    }
+    .found-banner.show { opacity: 1; transform: translateX(-50%) scale(1); }
+    .found-banner small { display: block; font-size: 0.78rem; font-weight: 500; opacity: 0.9; margin-top: 4px; }
 
-    .empty { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 28px 0; }
+    /* ===== 底部控制 ===== */
+    .bottom {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      z-index: 30;                 /* 高于抽屉，抽屉打开时仍可点 */
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px calc(env(safe-area-inset-bottom, 0px) + 14px);
+      background: linear-gradient(0deg, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0.5) 62%, rgba(0, 0, 0, 0) 100%);
+    }
+    .cam-btn {
+      flex-shrink: 0;
+      padding: 12px 22px;
+      border-radius: 999px;
+      border: none;
+      background: #fff;
+      color: #0b0d10;
+      font-size: 0.92rem; font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+    .cam-btn:hover { background: #e6edf3; }
+    .cam-btn.stop { background: rgba(255, 255, 255, 0.16); color: #fff; border: 1px solid rgba(255, 255, 255, 0.28); }
+    .cam-stat {
+      flex: 1; min-width: 0;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+      line-height: 1.4;
+    }
+    .sheet-toggle {
+      flex-shrink: 0;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #fff;
+      font-size: 0.84rem; font-weight: 600;
+      cursor: pointer;
+    }
+    .sheet-toggle b { color: #fca5a5; }
 
+    /* ===== 结果抽屉 ===== */
+    .sheet {
+      position: fixed; left: 0; right: 0;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);   /* 让出底部控制条 */
+      z-index: 25;
+      height: 58vh;
+      max-height: 58vh;
+      transform: translateY(calc(100% + 80px));
+      transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+      background: rgba(15, 18, 23, 0.94);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 20px 20px 0 0;
+      display: flex; flex-direction: column;
+    }
+    .sheet.open { transform: translateY(0); }
+    .sheet-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px 10px;
+      flex-shrink: 0;
+    }
+    .sheet-head .grip {
+      position: absolute; left: 50%; top: 6px;
+      transform: translateX(-50%);
+      width: 40px; height: 4px; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .sheet-head h3 { font-size: 0.95rem; color: #fff; flex: 1; }
+    .sheet-head .stat { font-size: 0.78rem; color: rgba(255, 255, 255, 0.55); }
+    .sheet-tools {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      padding: 0 16px 10px;
+      flex-shrink: 0;
+    }
+    .chip-btn {
+      padding: 6px 13px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.08);
+      color: #e6edf3;
+      font-size: 0.78rem; font-weight: 600;
+      cursor: pointer;
+    }
+    .chip-btn:hover { background: rgba(255, 255, 255, 0.16); }
+    .chip-btn.danger { border-color: rgba(239, 68, 68, 0.5); color: #fca5a5; }
+    .chip-btn.danger:hover { background: rgba(239, 68, 68, 0.18); }
+
+    .sheet-list {
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 0 16px 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+      align-content: start;
+    }
+    .res-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 13px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-left: 3px solid rgba(16, 185, 129, 0.7);   /* 普通单号：绿色左侧条 */
+    }
+    /* 命中我自己输入的单号：整块红色高亮，与画面上的红框对应 */
+    .res-item.is-target {
+      background: rgba(239, 68, 68, 0.16);
+      border-color: rgba(239, 68, 68, 0.6);
+      border-left-color: #ff2d2d;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+    .res-main { flex: 1; min-width: 0; }
+    .res-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95rem; font-weight: 700;
+      color: #fff;
+      word-break: break-all;
+    }
+    .res-meta { font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-top: 2px; }
+    .res-meta .tag {
+      display: inline-block;
+      padding: 1px 7px; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      margin-right: 4px;
+    }
+    .res-meta .tag.hit { background: rgba(239, 68, 68, 0.28); color: #fecaca; }
+    .res-act {
+      flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .res-act button {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: transparent;
+      color: #cbd5e1;
+      font-size: 0.7rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .res-act button:hover { background: rgba(255, 255, 255, 0.12); }
+    .res-act button.del { border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }
+
+    .empty-tip {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.85rem;
+      padding: 40px 0;
+    }
+
+    /* ===== 设置面板 ===== */
+    .settings-panel {
+      position: fixed; inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .settings-panel.open { display: flex; }
+    .settings-card {
+      width: 100%; max-width: 380px;
+      border-radius: 16px;
+      background: #151a21;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 20px;
+      color: #e6edf3;
+    }
+    .settings-card h3 { font-size: 1rem; margin-bottom: 16px; color: #fff; }
+    .set-row { margin-bottom: 16px; }
+    .set-row label { display: block; font-size: 0.78rem; font-weight: 700; color: rgba(255, 255, 255, 0.55); margin-bottom: 6px; }
+    .set-row select, .set-row input[type="number"] {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .set-row select:focus, .set-row input:focus { border-color: rgba(239, 68, 68, 0.7); }
+    .set-row .hint { font-size: 0.72rem; color: rgba(255, 255, 255, 0.4); margin-top: 5px; }
+    .set-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+    .set-actions button {
+      padding: 9px 20px;
+      border-radius: 999px;
+      font-size: 0.85rem; font-weight: 700;
+      cursor: pointer;
+      border: none;
+    }
+    .set-actions .ok { background: #ef4444; color: #fff; }
+    .set-actions .ok:hover { background: #dc2626; }
+
+    /* ===== Toast ===== */
     .toast {
-      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(12px);
-      background: rgba(31, 35, 40, 0.9); color: #fff; padding: 9px 20px; border-radius: 999px;
-      font-size: 0.88rem; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; z-index: 50;
+      position: fixed; left: 50%; bottom: 96px;
+      transform: translateX(-50%) translateY(12px);
+      background: rgba(230, 237, 243, 0.95);
+      color: #0b0d10;
+      padding: 9px 20px; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 60;
+      max-width: 88vw;
+      text-align: center;
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* 摄像头实时识别 */
-    .cam-wrap {
-      position: relative; width: 100%; max-width: 640px; margin: 0 auto 14px;
-      border-radius: var(--radius); overflow: hidden; background: #1f2328;
-      aspect-ratio: 4 / 3; border: 1px solid rgba(255, 255, 255, 0.75);
+    @media (min-width: 900px) {
+      .sheet { height: 54vh; max-height: 54vh; }
     }
-    .cam-wrap video, .cam-wrap canvas {
-      position: absolute; inset: 0; width: 100%; height: 100%; display: block;
-    }
-    .cam-wrap video { object-fit: cover; }
-    .cam-wrap canvas { pointer-events: none; }
-    .cam-off {
-      position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 8px;
-      color: rgba(255, 255, 255, 0.55); font-size: 0.88rem; background: #1f2328;
-    }
-    .cam-off-icon { font-size: 2.2rem; }
-    .cam-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
-    .cam-stat { font-size: 0.82rem; color: var(--muted); }
-    .cam-thumb {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 4px; width: 100%; height: 100%; min-height: 110px;
-      background: rgba(31, 35, 40, 0.06); color: var(--muted); font-size: 0.72rem;
-    }
-    .cam-thumb span { font-size: 0.68rem; }
 
-    @media (max-width: 640px) {
-      .result-card { flex-direction: column; }
-      .thumb { width: 100%; }
+    /* 窄屏：顶栏收紧，输入框下移，避免和预览标签重叠 */
+    @media (max-width: 560px) {
+      .topbar { padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px; gap: 8px; }
+      .topbar .title { font-size: 0.88rem; }
+      .topbar .back, .icon-btn { width: 34px; height: 34px; font-size: 1rem; }
+      /* 竖屏拍摄时画面横向被裁得厉害，输入框放到标题正下方并缩短，
+         给画面上方的单号留出可见区域 */
+      .targetbar {
+        top: calc(env(safe-area-inset-top, 0px) + 50px);
+        left: 10px; right: 10px;
+      }
+      .targetbar input { font-size: 0.86rem; padding: 9px 32px 9px 32px; }
+      .bottom { padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 10px); gap: 8px; }
+      .cam-btn { padding: 11px 16px; font-size: 0.86rem; }
+      .cam-stat { font-size: 0.7rem; }
+      .sheet-toggle { padding: 9px 13px; font-size: 0.78rem; }
+      .sheet-list { grid-template-columns: 1fr; }
+      .found-banner {
+        top: auto;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 78px);
+        padding: 11px 20px; font-size: 0.92rem;
+      }
     }
   </style>
 </head>
-<body>
+<body class="ocr-app">
 
-  <header class="site-header">
-    <nav class="container nav">
-      <a class="brand" href="../index.html">Thomas455</a>
-      <ul class="nav-links">
-        <li><a href="../tools.html">工具</a></li>
-        <li><a href="../nav.html">导航</a></li>
-        <li><a href="../index.html#projects">项目</a></li>
-        <li><a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a></li>
-        <li><a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></li>
-      </ul>
-    </nav>
+  <!-- 摄像头全屏舞台 -->
+  <div class="stage" id="camStage">
+    <video id="camVideo" playsinline muted autoplay></video>
+    <canvas id="camOverlay"></canvas>
+    <div class="cam-off" id="camOff">
+      <div class="big">📷</div>
+      <div>摄像头未开启</div>
+      <div class="tip">点下方「开启摄像头」，把镜头对准快递单号即可。<br>需要 HTTPS 或 localhost 才能调用摄像头。</div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header class="topbar">
+    <a class="back" href="../tools.html" title="返回在线工具">←</a>
+    <div class="title">快递 OCR 查找</div>
+    <button class="icon-btn" id="settingsBtn" title="设置">⚙</button>
   </header>
 
-  <main class="container">
-    <a class="back-link" href="../tools.html">← 返回在线工具</a>
-
-    <section class="tool-hero">
-      <h1>快递<span class="accent">OCR 查找</span></h1>
-      <p class="muted">摄像头实时扫货架，单号当场框出；也可上传照片批量识别。输入编号即可快速定位是哪一格快递，全部本地处理。</p>
-    </section>
-
-    <!-- 摄像头实时识别 -->
-    <section class="tool-card glass">
-      <h3>1 · 摄像头实时查找</h3>
-      <p class="muted" style="font-size:0.88rem;margin-bottom:14px">对着货架扫一扫，识别到的单号会当场框出来，并累计到下方结果里。</p>
-      <div class="cam-wrap" id="camWrap">
-        <video id="camVideo" playsinline muted></video>
-        <canvas id="camOverlay"></canvas>
-        <div class="cam-off" id="camOff">
-          <div class="cam-off-icon">📷</div>
-          <div>摄像头未开启</div>
-        </div>
-      </div>
-      <div class="cam-bar">
-        <button class="btn" id="camStartBtn">开启摄像头</button>
-        <button class="btn btn-outline" id="camStopBtn" style="display:none">关闭摄像头</button>
-        <span class="cam-stat" id="camStat"></span>
-      </div>
-      <div class="hint">
-        说明：实时识别是把当前画面缩到合适尺寸后连续送进 OCR，每帧约 0.3–1 秒，
-        所以框选会有短暂延迟。识别全部在本地完成，<b>画面不会上传</b>。
-        需要 HTTPS 或 localhost 才能调用摄像头。
-      </div>
-    </section>
-
-    <!-- 上传 -->
-    <section class="tool-card glass">
-      <h3>2 · 或选择快递货架照片</h3>
-      <div class="dropzone" id="dropzone">
-        <div class="dz-main">点击选择或拖拽图片到这里</div>
-        <div>支持多张：JPG / PNG / WebP，建议把单号拍清楚、尽量正对</div>
-        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple hidden>
-      </div>
-      <div class="hint">提示：可以一次拍多张（不同货架 / 不同角度），识别结果会自动合并去重。</div>
-
-      <div class="settings">
-        <div class="setting">
-          <label>识别档位</label>
-          <select id="quality">
-            <option value="fast">省流量（语言包 ~3 MB，最快）</option>
-            <option value="balanced" selected>均衡（语言包 ~3 MB，推荐）</option>
-            <option value="accurate">精细（多跑一遍预处理，慢一点）</option>
-          </select>
-        </div>
-        <div class="setting">
-          <label>单号最少位数</label>
-          <input type="number" id="minLen" value="6" min="3" max="20">
-          <div class="hint">小于该位数的识别结果会被忽略</div>
-        </div>
-        <div class="setting">
-          <label>放大倍数（低清照片可调大）</label>
-          <input type="number" id="upscale" value="2" min="1" max="4" step="0.5">
-        </div>
-      </div>
-
-      <div class="check-row">
-        <label><input type="checkbox" id="optPreprocess" checked> 图像预处理（灰度 / 对比度增强，提升识别率）</label>
-        <label><input type="checkbox" id="optMerge" checked> 合并同一行被拆开的单号</label>
-        <label><input type="checkbox" id="optCourier" checked> 快递公司前缀纠错</label>
-        <label><input type="checkbox" id="optGroup" checked> 按位置聚类同一张图里的多个单号</label>
-      </div>
-
-      <div class="actions">
-        <button class="btn" id="goBtn">开始识别</button>
-        <button class="btn btn-outline" id="stopBtn" style="display:none">停止</button>
-      </div>
-      <div class="progress" id="progress"></div>
-      <div class="bar"><i id="barFill"></i></div>
-
-      <div id="previews" class="previews" style="display:none">
-        <div class="previews-head">
-          <span>已添加 <b id="pcount">0</b> 张</span>
-          <button class="btn btn-outline sm" id="clearBtn">清空</button>
-        </div>
-      </div>
-      <div id="errors"></div>
-    </section>
-
-    <!-- 结果 -->
-    <section class="tool-card glass" id="resultCard" style="display:none">
-      <h3>3 · 查找快递</h3>
-      <div class="result-toolbar">
-        <input type="text" id="searchBox" placeholder="输入单号 / 编号关键字，直接定位快递…" autocomplete="off">
-        <span class="stat" id="statBox"></span>
-      </div>
-      <div class="result-toolbar">
-        <button class="mini-btn" id="copyAllBtn">复制全部单号</button>
-        <button class="mini-btn" id="exportCsvBtn">导出 CSV</button>
-        <button class="mini-btn" id="exportJsonBtn">导出 JSON</button>
-        <button class="mini-btn danger" id="clearResultsBtn">清空结果</button>
-      </div>
-      <div class="result-grid" id="resultGrid"></div>
-      <div class="empty" id="emptyBox">还没有识别到快递单号。</div>
-    </section>
-
-    <section class="tool-card glass">
-      <h3>使用说明</h3>
-      <ul style="margin:0;padding-left:20px;color:var(--muted);font-size:0.9rem;line-height:1.9">
-        <li>整个识别过程在浏览器里完成（WebAssembly 版 Tesseract），<b>图片和摄像头画面都不会上传到任何服务器</b>。</li>
-        <li>第一次使用需要联网下载 OCR 引擎与语言包（约 4–6 MB，走国内镜像），之后浏览器会缓存，可离线使用。</li>
-        <li><b>摄像头实时查找</b>：对着货架扫，识别到的单号会当场用绿框标出并累计到结果里；需要 HTTPS 或 localhost 才能调用摄像头。</li>
-        <li>「合并同一行被拆开的单号」用于处理 <b>SF 7744 5566 8899</b> 这类带空格、被 OCR 拆成多段的单号。</li>
-        <li>「快递公司前缀纠错」会把 <b>ZT0-</b>、<b>$F</b>、<b>Y1T</b>、<b>270-</b> 这类误识别的前缀修正为 <b>ZTO-</b>、<b>SF</b>、<b>YT</b>。</li>
-        <li>识别结果可以编辑：点「编辑」可修正误识别的字符，改完即时生效。</li>
-        <li>上传照片的结果会带缩略图，绿色高亮框就是单号在照片中的位置，方便你回头去找实物。</li>
-      </ul>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="container">
-      <p>&copy; <span id="year"></span> Thomas455 · <a href="../tools.html">返回工具</a></p>
+  <!-- 我的单号 -->
+  <div class="targetbar">
+    <div class="field">
+      <span class="lens">🔍</span>
+      <input id="targetInput" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+             placeholder="输入你的单号（留空则识别全部）">
+      <button class="clear" id="targetClear" title="清空">×</button>
     </div>
-  </footer>
+  </div>
+
+  <!-- 命中提示 -->
+  <div class="found-banner" id="foundBanner"></div>
+
+  <!-- 底部控制 -->
+  <div class="bottom">
+    <button class="cam-btn" id="camStartBtn">开启摄像头</button>
+    <button class="cam-btn stop" id="camStopBtn" style="display:none">停止</button>
+    <span class="cam-stat" id="camStat"></span>
+    <button class="sheet-toggle" id="sheetToggle">结果 <b id="resCount">0</b></button>
+  </div>
+
+  <!-- 结果抽屉 -->
+  <section class="sheet" id="sheet">
+    <div class="sheet-head">
+      <span class="grip"></span>
+      <h3>识别到的单号</h3>
+      <span class="stat" id="sheetStat"></span>
+    </div>
+    <div class="sheet-tools">
+      <button class="chip-btn" id="copyAllBtn">复制全部</button>
+      <button class="chip-btn" id="exportCsvBtn">导出 CSV</button>
+      <button class="chip-btn" id="exportJsonBtn">导出 JSON</button>
+      <button class="chip-btn danger" id="clearResultsBtn">清空</button>
+    </div>
+    <div class="sheet-list" id="resultGrid"></div>
+  </section>
+
+  <!-- 设置 -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-card">
+      <h3>识别设置</h3>
+      <div class="set-row">
+        <label>识别档位</label>
+        <select id="quality">
+          <option value="fast">省流量（语言包 ~3 MB，最快）</option>
+          <option value="balanced" selected>均衡（推荐）</option>
+          <option value="accurate">精细（多跑一遍预处理，慢一点）</option>
+        </select>
+        <div class="hint">档位越高越准，但每帧更慢</div>
+      </div>
+      <div class="set-row">
+        <label>单号最少位数</label>
+        <input type="number" id="minLen" value="6" min="3" max="20">
+        <div class="hint">小于该位数的识别结果会被忽略</div>
+      </div>
+      <div class="set-actions">
+        <button class="ok" id="settingsClose">完成</button>
+      </div>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
 
@@ -312,53 +536,40 @@
     };
     const LANG_NAME = 'eng';
 
-    // 档位 -> tessdata 模型 + 多遍扫描参数。
-    // passes 里每一项是「一遍」：up = 相对图片原始尺寸的放大倍数，pre = 是否做预处理。
-    // 无头 Edge 实测（960x932 货架照片，12 个单号）：
-    //   单遍 2× 无预处理        -> 9/12
-    //   单遍 3× 无预处理        -> 10/12
-    //   2× + 3× 无预处理 并集   -> 12/12（两遍额外耗时 < 1.5s，非常划算）
-    // 另外几个关键设置（同样来自实测）：
-    //   - tessedit_pageseg_mode = 6：默认的 3（全自动布局）在纯色大背景下经常
-    //     把整张图判成一个块直接放弃，psm 6 能稳定多认出 2 个单号。
-    //   - 放大用最近邻（imageSmoothingEnabled = false）：平滑插值会把已经模糊的
-    //     小字抹得更糊。
-    //   - 语言包用 best_int（2.9MB）：实测精度与 11MB 标准版相同，下载快 4 倍。
+    // 档位 -> 处理的画面边长上限 + 是否做预处理。
+    // 实时识别对速度敏感，所以画面先缩到这个尺寸再送 OCR。
     const PROFILES = {
-      fast: {
-        model: 'fast',
-        passes: [{ up: 2, pre: false }],
-      },
-      balanced: {
-        model: 'std',
-        passes: [{ up: 2, pre: false }, { up: 3, pre: false }],
-      },
-      accurate: {
-        model: 'best',
-        passes: [{ up: 2, pre: false }, { up: 2, pre: true }, { up: 3, pre: false }],
-      },
+      fast:     { maxSide: 720,  preprocess: false },
+      balanced: { maxSide: 900,  preprocess: false },
+      accurate: { maxSide: 1100, preprocess: true },
     };
 
     /* ================= 元素 ================= */
     const $ = id => document.getElementById(id);
-    const dropzone = $('dropzone'), fileInput = $('fileInput');
-    const qualitySel = $('quality'), minLenInput = $('minLen'), upscaleInput = $('upscale');
-    const optPre = $('optPreprocess'), optMerge = $('optMerge'), optCourier = $('optCourier'), optGroup = $('optGroup');
-    const goBtn = $('goBtn'), stopBtn = $('stopBtn'), progress = $('progress'), barFill = $('barFill');
-    const errorsEl = $('errors'), previewsEl = $('previews'), pcountEl = $('pcount'), clearBtn = $('clearBtn');
-    const resultCard = $('resultCard'), resultGrid = $('resultGrid'), emptyBox = $('emptyBox');
-    const searchBox = $('searchBox'), statBox = $('statBox');
-    const copyAllBtn = $('copyAllBtn'), exportCsvBtn = $('exportCsvBtn'), exportJsonBtn = $('exportJsonBtn'), clearResultsBtn = $('clearResultsBtn');
+    const camVideo = $('camVideo'), camOverlay = $('camOverlay'), camOff = $('camOff');
+    const camStartBtn = $('camStartBtn'), camStopBtn = $('camStopBtn'), camStat = $('camStat');
+    const targetInput = $('targetInput'), targetClear = $('targetClear');
+    const foundBanner = $('foundBanner');
+    const sheet = $('sheet'), sheetToggle = $('sheetToggle'), resCount = $('resCount'), sheetStat = $('sheetStat');
+    const resultGrid = $('resultGrid'), clearResultsBtn = $('clearResultsBtn');
+    const copyAllBtn = $('copyAllBtn'), exportCsvBtn = $('exportCsvBtn'), exportJsonBtn = $('exportJsonBtn');
+    const qualitySel = $('quality'), minLenInput = $('minLen');
+    const settingsBtn = $('settingsBtn'), settingsPanel = $('settingsPanel'), settingsClose = $('settingsClose');
     const toastEl = $('toast');
 
-    let pendingFiles = [];
-    let results = [];
-    let images = [];
-    let worker = null;
-    let stopping = false;
+    /* ================= 状态 ================= */
+    let camStream = null;
+    let camRunning = false;
+    let camBusy = false;          // 一帧正在识别中，避免叠帧
+    let camRAF = 0;
+    let camWorker = null;
+    let camLastShot = '';         // 上一帧的画面指纹，跳过重复帧
+    let lastDetections = [];      // 最近一帧的识别结果，用于即时重绘
+    let camScannedFrames = 0;
+    let found = [];               // {id, code, conf, courier, at}
     let seq = 0;
-
-    $('year').textContent = new Date().getFullYear();
+    let bannerTimer = null;
+    let lastHitCode = '';
 
     /* ================= 通用工具 ================= */
     function esc(s) {
@@ -370,7 +581,7 @@
       toastEl.textContent = msg;
       toastEl.classList.add('show');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1900);
     }
 
     async function copyText(text) {
@@ -399,7 +610,6 @@
     }
 
     /* ================= 快递公司字典 ================= */
-    // 常见快递公司英文/数字前缀，用于打标签与纠错
     const COURIERS = [
       { name: '顺丰速运', prefix: 'SF' },
       { name: '京东物流', prefix: 'JD' },
@@ -409,7 +619,7 @@
       { name: '申通快递', prefix: 'STO' },
       { name: '邮政 EMS', prefix: 'EMS' },
       { name: '极兔速递', prefix: 'JT' },
-      { name: '德郑快递', prefix: 'DP' },
+      { name: '德邦快递', prefix: 'DP' },
       { name: '丹鸟快递', prefix: 'DN' },
       { name: 'FedEx', prefix: 'FX' },
     ];
@@ -542,23 +752,12 @@
     }
 
     /* ================= 图像预处理 ================= */
-    // 按倍数放大后（可选）做灰度 + 1%/99% 直方图对比度拉伸。
-    // 放大用最近邻插值，避免浏览器把已经模糊的小字抹得更糊。
-    function preprocess(src, opts) {
-      const up = Math.max(1, Math.min(4, opts.up || 1));
-      const w = Math.max(1, Math.round(src.width * up));
-      const h = Math.max(1, Math.round(src.height * up));
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
+    // 灰度 + 1%/99% 直方图对比度拉伸（"精细"档用）
+    function stretchContrast(canvas) {
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      ctx.imageSmoothingEnabled = up === 1;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(src, 0, 0, w, h);
-      if (!opts.preprocess) return canvas;
-
-      const imgData = ctx.getImageData(0, 0, w, h);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const d = imgData.data;
-      const n = w * h;
+      const n = canvas.width * canvas.height;
       const hist = new Uint32Array(256);
       for (let i = 0; i < n; i++) {
         hist[(d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000 | 0]++;
@@ -585,21 +784,8 @@
     }
 
     /* ================= OCR 引擎管理 ================= */
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        if (window.Tesseract) { resolve(); return; }
-        const s = document.createElement('script');
-        s.src = src;
-        s.onload = () => resolve();
-        s.onerror = () => reject(new Error('OCR 引擎加载失败，请检查网络后刷新页面'));
-        document.head.appendChild(s);
-      });
-    }
-
-    /* ================= OCR 引擎管理 ================= */
-    // 带超时的探测：确认某个镜像真的能连上再交给 tesseract 用，
-    // 否则 tesseract 内部的失败信息很难定位，而且会拖很久才超时。
-    // 注意必须探测「具体文件」——目录路径在 npmmirror 是 404、在 unpkg 直接 CORS 报错。
+    // 带超时的探测：确认某个镜像真的能连上再交给 tesseract 用。
+    // 必须探测「具体文件」——目录路径在 npmmirror 是 404、在 unpkg 直接 CORS 报错。
     function probe(url, timeoutMs) {
       return new Promise(resolve => {
         const timer = setTimeout(() => resolve(false), timeoutMs || 8000);
@@ -629,7 +815,6 @@
       });
     }
 
-    // 记住已经选定的镜像，避免每次跑都重新探测
     let mirrorCache = null;
     async function getMirrors() {
       if (mirrorCache) return mirrorCache;
@@ -642,12 +827,13 @@
       return mirrorCache;
     }
 
-    async function ensureWorker(modelKey) {
+    // 同一个 worker 复用于实时识别；换档位时才重建
+    async function ensureWorker(profileKey) {
       const m = await getMirrors();
       await loadScript(m.lib + '/tesseract.min.js');
-      if (worker && worker.__model === modelKey) return worker;
-      if (worker) { try { await worker.terminate(); } catch (e) {} worker = null; }
-      worker = await Tesseract.createWorker(LANG_NAME, 1, {
+      if (camWorker && camWorker.__model === profileKey) return camWorker;
+      if (camWorker) { try { await camWorker.terminate(); } catch (e) {} camWorker = null; }
+      camWorker = await Tesseract.createWorker(LANG_NAME, 1, {
         workerPath: m.lib + '/worker.min.js',
         langPath: m.lang,
         corePath: m.core,
@@ -655,12 +841,11 @@
         logger: () => {},
       });
       // 页面分割模式 6 = 「假设是统一的一列文本」。
-      // 货架照片文字分散在多个格子里，默认的 psm 3（全自动布局分析）经常把
-      // 整张图判成一个块而直接放弃；实测 psm 6 在同样的 12 单号照片上
-      // 从 8/12 提升到 12/12，且对纯色大背景更稳。
-      try { await worker.setParameters({ tessedit_pageseg_mode: '6' }); } catch (e) {}
-      worker.__model = modelKey;
-      return worker;
+      // 默认的 psm 3（全自动布局分析）在纯色大背景下经常把整张图判成一个块
+      // 直接放弃；实测 psm 6 在同样的货架照片上从 8/12 提升到 12/12。
+      try { await camWorker.setParameters({ tessedit_pageseg_mode: '6' }); } catch (e) {}
+      camWorker.__model = profileKey;
+      return camWorker;
     }
 
     /* ================= 单号提取 ================= */
@@ -673,8 +858,7 @@
       return COURIERS.some(c => c.prefix === s);           // 或本身是公司前缀
     }
 
-    // 从 OCR 的 word 列表里筛出候选单号
-    function collectCandidates(data, opts) {
+    function collectCandidates(data) {
       const words = (data && data.words) || [];
       const out = [];
       words.forEach(wd => {
@@ -698,10 +882,15 @@
       return out;
     }
 
+    // 段 token 是否适合参与行合并：要么是纯公司前缀，要么含数字
+    function looksMergeable(code) {
+      if (/\d/.test(code)) return true;
+      return COURIERS.some(c => c.prefix === code);
+    }
+
     // 合并同一行里被空格拆开的单号：SF 7744 5566 8899 -> SF774455668899
-    function mergeLineWords(list, opts) {
+    function mergeLineWords(list) {
       if (list.length < 2) return list;
-      // 按行（y 中点）排序，再按 x 排序
       const sorted = list.slice().sort((a, b) => {
         const ay = a.bbox ? (a.bbox.y0 + a.bbox.y1) / 2 : 0;
         const by = b.bbox ? (b.bbox.y0 + b.bbox.y1) / 2 : 0;
@@ -746,46 +935,37 @@
       return merged;
     }
 
-    // 一段 token 是否适合参与行合并：要么是纯公司前缀，要么含数字
-    function looksMergeable(code) {
-      if (/\d/.test(code)) return true;
-      return COURIERS.some(c => c.prefix === code);
+    /* ================= 我的单号（目标匹配） ================= */
+    function currentTarget() {
+      return normalizeCode(targetInput.value);
     }
 
-    // 按位置聚类：同一张图里纵向间距大的归为不同组
-    function groupByPosition(list) {
-      const GAP = 70;
-      const sorted = list.slice().sort((a, b) => (a.bbox ? a.bbox.y0 : 0) - (b.bbox ? b.bbox.y0 : 0));
-      let group = 0, lastY = null;
-      sorted.forEach(it => {
-        const y = it.bbox ? it.bbox.y0 : 0;
-        if (lastY === null || Math.abs(y - lastY) > GAP) { group++; lastY = y; }
-        it.group = group;
-      });
-      return sorted;
+    // 命中判定：完全相等，或目标被识别结果包含 / 识别结果被目标包含（容错）
+    function isTargetHit(code, target) {
+      if (!target) return false;
+      if (code === target) return true;
+      // 目标较长时，容忍首尾被裁掉一两位
+      if (target.length >= 8 && (code.includes(target) || target.includes(code))) return true;
+      return false;
     }
 
     /* ================= 摄像头实时识别 ================= */
-    const camVideo = $('camVideo'), camOverlay = $('camOverlay'), camOff = $('camOff');
-    const camStartBtn = $('camStartBtn'), camStopBtn = $('camStopBtn'), camStat = $('camStat');
-    let camStream = null;
-    let camRunning = false;
-    let camBusy = false;          // 一帧正在识别中，避免叠帧
-    let camRAF = 0;
-    let camLastShot = '';         // 上一帧的画面指纹，跳过重复帧
-    let camWorker = null;
-    let camFoundTotal = 0;
+    const MIN_LEN = () => Math.max(3, Math.min(20, parseInt(minLenInput.value, 10) || 6));
 
     function camSupported() {
       return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     }
 
-    function camDrawBoxes(detections, srcW, srcH) {
-      // 把视频帧的坐标映射到覆盖层 canvas（object-fit: cover 的裁剪换算）
-      const wrap = camOverlay.parentElement;
-      const cw = wrap.clientWidth, ch = wrap.clientHeight;
-      camOverlay.width = cw; camOverlay.height = ch;
+    // 把视频帧坐标映射到覆盖层（object-fit: cover 的裁剪换算）并画红框
+    function drawBoxes(detections, srcW, srcH, target) {
+      const cw = window.innerWidth, ch = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (camOverlay.width !== Math.round(cw * dpr) || camOverlay.height !== Math.round(ch * dpr)) {
+        camOverlay.width = Math.round(cw * dpr);
+        camOverlay.height = Math.round(ch * dpr);
+      }
       const ctx = camOverlay.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cw, ch);
 
       const videoAR = srcW / srcH, wrapAR = cw / ch;
@@ -797,29 +977,75 @@
         scale = cw / srcW;
         offY = (ch - srcH * scale) / 2;
       }
+
       detections.forEach(d => {
         if (!d.box) return;
         const x = offX + d.box.x * scale, y = offY + d.box.y * scale;
         const w = d.box.w * scale, h = d.box.h * scale;
-        const pad = Math.max(3, h * 0.18);
-        ctx.fillStyle = 'rgba(5,150,105,0.22)';
-        ctx.fillRect(x - pad, y - pad, w + pad * 2, h + pad * 2);
-        ctx.strokeStyle = '#059669';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x - pad, y - pad, w + pad * 2, h + pad * 2);
-        // 文字标签
+        const hit = isTargetHit(d.code, target);
+        const pad = Math.max(4, h * 0.2);
+        const bw = w + pad * 2, bh = h + pad * 2;
+
+        // 命中我自己输入的单号 -> 红色（更粗、更亮、带外发光）
+        // 其它识别到的单号 -> 绿色（普通提示）
+        ctx.fillStyle = hit ? 'rgba(239,68,68,0.30)' : 'rgba(5,150,105,0.22)';
+        ctx.fillRect(x - pad, y - pad, bw, bh);
+        ctx.strokeStyle = hit ? '#ff2d2d' : '#10b981';
+        ctx.lineWidth = hit ? 4 : 2.5;
+        ctx.strokeRect(x - pad, y - pad, bw, bh);
+
+        // 命中时加一圈外发光
+        if (hit) {
+          ctx.save();
+          ctx.shadowColor = 'rgba(255,45,45,0.9)';
+          ctx.shadowBlur = 16;
+          ctx.strokeStyle = 'rgba(255,45,45,0.85)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x - pad, y - pad, bw, bh);
+          ctx.restore();
+        }
+
+        // 单号文字标签（超出画面时往左收，避免被裁掉）
         const label = d.code;
-        ctx.font = '600 13px ui-monospace,Menlo,Consolas,monospace';
+        const fs = hit ? 15 : 13;
+        ctx.font = '700 ' + fs + 'px ui-monospace,Menlo,Consolas,monospace';
         const tw = ctx.measureText(label).width;
-        const ty = Math.max(14, y - pad - 18);
-        ctx.fillStyle = '#059669';
-        ctx.fillRect(x - pad, ty, tw + 10, 18);
+        const th = fs + 9;
+        const boxW = tw + 12;
+        let lx = x - pad;
+        if (lx + boxW > cw - 4) lx = Math.max(4, cw - 4 - boxW);
+        if (lx < 4) lx = 4;
+        const ty = Math.max(th, y - pad - th - 3);
+        ctx.fillStyle = hit ? '#ff2d2d' : '#10b981';
+        ctx.fillRect(lx, ty, boxW, th);
         ctx.fillStyle = '#fff';
-        ctx.fillText(label, x - pad + 5, ty + 13);
+        ctx.fillText(label, lx + 6, ty + fs + 1);
+
+        // 命中额外标一个「你的快递」
+        if (hit) {
+          const badge = '◀ 你的快递';
+          ctx.font = '700 12px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+          const bw2 = ctx.measureText(badge).width + 12;
+          let bx = lx + boxW + 6;
+          if (bx + bw2 > cw - 4) bx = Math.max(4, lx - bw2 - 6);   // 右边放不下就放左边
+          ctx.fillStyle = '#ff2d2d';
+          ctx.fillRect(bx, ty, bw2, th);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(badge, bx + 6, ty + fs + 1);
+        }
       });
     }
 
-    // 抓一帧 -> 送 OCR -> 画框
+    function showBanner(code) {
+      foundBanner.innerHTML = '✅ 找到你的快递<small>' + esc(code) + '</small>';
+      foundBanner.classList.add('show');
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(() => foundBanner.classList.remove('show'), 2600);
+      // 轻微震动反馈（支持的设备上）
+      if (navigator.vibrate) { try { navigator.vibrate([40, 60, 40]); } catch (e) {} }
+    }
+
+    // 抓一帧 -> 送 OCR -> 画框 -> 累计结果
     async function camTick() {
       if (!camRunning) return;
       if (camBusy) { camRAF = requestAnimationFrame(camTick); return; }
@@ -827,29 +1053,38 @@
       try {
         const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
         if (vw > 0 && vh > 0 && camWorker) {
-          // 跳到 640px 以内的短边，兼顾速度与可读性
-          const target = 640;
-          const scale = Math.min(1, target / Math.max(vw, vh));
+          const profile = PROFILES[qualitySel.value] || PROFILES.balanced;
+          const scale = Math.min(1, profile.maxSide / Math.max(vw, vh));
           const w = Math.max(1, Math.round(vw * scale)), h = Math.max(1, Math.round(vh * scale));
           const c = document.createElement('canvas');
           c.width = w; c.height = h;
           const ctx = c.getContext('2d', { willReadFrequently: true });
-          ctx.imageSmoothingEnabled = false;
+          ctx.imageSmoothingEnabled = false;       // 最近邻放大，别把字抹糊
           ctx.drawImage(camVideo, 0, 0, w, h);
+          if (profile.preprocess) stretchContrast(c);
 
           // 画面指纹：和上一帧几乎一样就跳过，省 CPU
-          const fp = w + 'x' + h + ':' + (ctx.getImageData(0, 0, Math.min(40, w), Math.min(40, h)).data.join('').slice(0, 200));
+          const fp = w + 'x' + h + ':' + (ctx.getImageData(0, 0, Math.min(32, w), Math.min(32, h)).data.join('').slice(0, 240));
           if (fp !== camLastShot) {
             camLastShot = fp;
+            camScannedFrames++;
             const { data } = await camWorker.recognize(c);
-            const detections = collectCandidates(data, { minLen: currentMinLen() })
-              .filter(f => isValidCode(canonicalize(f.code), currentMinLen()));
-            const seen = new Set();
-            detections.forEach(d => {
-              d.code = canonicalize(d.code);
-              if (seen.has(d.code)) return;
-              seen.add(d.code);
-              // 换算回视频原始坐标
+
+            const minLen = MIN_LEN();
+            let dets = collectCandidates(data);
+            dets = mergeLineWords(dets);
+            dets = dets.filter(d => isValidCode(d.code, minLen));
+
+            // 同一帧内按单号去重（保留置信度高的）
+            const byCode = new Map();
+            dets.forEach(d => {
+              const prev = byCode.get(d.code);
+              if (!prev || d.conf > prev.conf) byCode.set(d.code, d);
+            });
+            const uniq = Array.from(byCode.values());
+
+            // 换算回视频原始坐标供画框
+            uniq.forEach(d => {
               if (d.bbox) {
                 d.box = {
                   x: Math.round(d.bbox.x0 / scale),
@@ -859,43 +1094,49 @@
                 };
               }
             });
-            camDrawBoxes(detections, vw, vh);
 
-            // 新单号累计进结果
+            lastDetections = uniq;
+            const target = currentTarget();
+            drawBoxes(uniq, vw, vh, target);
+
+            // 命中自己的单号 -> 横幅提示
+            const hitCode = uniq.find(d => isTargetHit(d.code, target));
+            if (hitCode && hitCode.code !== lastHitCode) {
+              lastHitCode = hitCode.code;
+              showBanner(hitCode.code);
+            } else if (!hitCode) {
+              lastHitCode = '';
+            }
+
+            // 累计到结果列表
             let added = 0;
-            detections.forEach(d => {
-              if (results.some(r => r.code === d.code)) return;
-              results.push({
+            uniq.forEach(d => {
+              const exist = found.find(r => r.code === d.code);
+              if (exist) {
+                if (d.conf > exist.conf) { exist.conf = d.conf; }
+                return;
+              }
+              found.push({
                 id: 'r' + (++seq),
                 code: d.code,
-                raw: d.code,
                 conf: d.conf,
-                imageId: 'camera',
-                group: null,
-                box: d.box,
                 courier: detectCourier(d.code),
-                edited: false,
+                at: Date.now(),
               });
               added++;
             });
-            if (added) {
-              camFoundTotal += added;
-              camStat.textContent = '已累计 ' + camFoundTotal + ' 个单号（本次新增 ' + added + '）';
-              renderResults();
-            }
+            if (added) renderResults();
+
+            camStat.textContent = '已扫 ' + camScannedFrames + ' 帧 · 识别到 ' + found.length + ' 个单号';
           }
         }
       } catch (e) {
         // 单帧失败不中断实时识别
-        camStat.textContent = '识别出错：' + (e.message || e);
+        camStat.textContent = '识别出错：' + (e && e.message ? e.message : e);
       } finally {
         camBusy = false;
       }
       camRAF = requestAnimationFrame(camTick);
-    }
-
-    function currentMinLen() {
-      return Math.max(3, Math.min(20, parseInt(minLenInput.value, 10) || 6));
     }
 
     async function camStart() {
@@ -907,7 +1148,11 @@
       camStat.textContent = '正在准备 OCR 引擎…';
       try {
         camStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1440 },
+          },
           audio: false,
         });
         camVideo.srcObject = camStream;
@@ -917,16 +1162,18 @@
         camStopBtn.style.display = '';
         camStat.textContent = '正在加载 OCR 引擎…';
 
-        const profile = PROFILES[qualitySel.value] || PROFILES.balanced;
-        camWorker = await ensureWorker(profile.model);
+        await ensureWorker(qualitySel.value || 'balanced');
         camRunning = true;
         camLastShot = '';
+        camScannedFrames = 0;
+        lastHitCode = '';
         camStat.textContent = '实时识别中…';
         camRAF = requestAnimationFrame(camTick);
       } catch (e) {
         camStop();
-        const msg = /Permission|NotAllowed/i.test(e.name || '') ? '摄像头权限被拒绝，请在地址栏允许后重试'
-          : (e.message || String(e));
+        const msg = /Permission|NotAllowed/i.test(e.name || '')
+          ? '摄像头权限被拒绝，请在地址栏允许后重试'
+          : (e && e.message ? e.message : String(e));
         toast('无法开启摄像头：' + msg);
         camStat.textContent = '';
       } finally {
@@ -939,368 +1186,143 @@
       if (camRAF) { cancelAnimationFrame(camRAF); camRAF = 0; }
       if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
       camVideo.srcObject = null;
-      camWorker = null;
       camBusy = false;
       camLastShot = '';
+      lastHitCode = '';
+      lastDetections = [];
       const ctx = camOverlay.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, camOverlay.width, camOverlay.height);
+      if (ctx) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, camOverlay.width, camOverlay.height); }
       camOff.style.display = '';
       camStartBtn.style.display = '';
       camStopBtn.style.display = 'none';
+      foundBanner.classList.remove('show');
     }
 
-    camStartBtn.addEventListener('click', camStart);
-    camStopBtn.addEventListener('click', () => { camStop(); camStat.textContent = '已停止'; });
-
-    // 切档位时丢弃缓存的 worker，下次开摄像头会用新档位
-    qualitySel.addEventListener('change', () => { if (camWorker) { try { camWorker.terminate(); } catch (e) {} camWorker = null; } });
-
-    // 离开页面时关摄像头，别把指示灯留着
-    window.addEventListener('beforeunload', () => camStop());
-
-    /* ================= 主流程 ================= */
-    function setProgress(text, pct) {
-      progress.textContent = text || '';
-      barFill.style.width = (pct == null ? 0 : Math.round(pct * 100)) + '%';
-    }
-
-    async function run() {
-      if (!pendingFiles.length) { setProgress('请先选择照片'); return; }
-      const profile = PROFILES[qualitySel.value] || PROFILES.balanced;
-      const minLen = Math.max(3, Math.min(20, parseInt(minLenInput.value, 10) || 6));
-      const userUp = Math.max(1, Math.min(4, parseFloat(upscaleInput.value) || 1));
-      // 用户放大倍数叠加到每一遍上
-      const passes = profile.passes.map(p => ({ up: Math.min(4, p.up * userUp), pre: p.pre }));
-      const doPre = optPre.checked;
-      const doMerge = optMerge.checked;
-      const doCourier = optCourier.checked;
-      const doGroup = optGroup.checked;
-
-      goBtn.disabled = true;
-      stopBtn.style.display = '';
-      stopping = false;
-      results = [];
-      images.forEach(im => { try { URL.revokeObjectURL(im.url); } catch (e) {} });
-      images = [];
-      errorsEl.innerHTML = '';
-      resultGrid.innerHTML = '';
-      resultCard.style.display = 'none';
-
-      const total = pendingFiles.length;
-      const t0 = performance.now();
-
-      for (let i = 0; i < pendingFiles.length; i++) {
-        if (stopping) break;
-        const file = pendingFiles[i];
-        const frac = i / total;
-        setProgress('正在识别 ' + (i + 1) + ' / ' + total + '：' + file.name, frac);
-        try {
-          const { img, url } = await decodeFile(file);
-          const imgId = 'img-' + (i + 1);
-          images.push({ id: imgId, name: file.name, url, source: img, w: img.naturalWidth, h: img.naturalHeight });
-
-          setProgress('正在识别 ' + (i + 1) + ' / ' + total + '：' + file.name + '（加载 OCR 引擎…）', frac);
-          const w = await ensureWorker(profile.model);
-
-          // 多档位扫描：同一张图用不同的放大倍数/预处理各识别一次，取并集。
-          // 实测单张货架照片：单遍 8/12，两遍并集 10/12（无预处理 2× + 无预处理 3×）。
-          const passes = profile.passes;
-          const acc = new Map();   // code -> {conf, bbox(以第一遍为基准), raw}
-          for (let pi = 0; pi < passes.length && !stopping; pi++) {
-            const pc = passes[pi];
-            setProgress('正在识别 ' + (i + 1) + ' / ' + total + '：' + file.name +
-              (passes.length > 1 ? '（第 ' + (pi + 1) + '/' + passes.length + ' 遍）' : ''), frac);
-            const canvas = preprocess(img, {
-              up: pc.up,
-              preprocess: doPre && pc.pre,
-            });
-            const scaleX = img.naturalWidth / canvas.width;
-            const scaleY = img.naturalHeight / canvas.height;
-            const { data } = await w.recognize(canvas);
-
-            let found = collectCandidates(data, { minLen });
-            if (doMerge) found = mergeLineWords(found, { minLen });
-            found = found.filter(f => isValidCode(f.code, minLen));
-            if (doCourier) found = found.map(f => ({ ...f, code: fixCourierPrefix(f.code) }));
-            found = found.filter(f => isValidCode(f.code, minLen));
-            if (doGroup) found = groupByPosition(found);
-
-            found.forEach(f => {
-              const prev = acc.get(f.code);
-              if (!prev) {
-                acc.set(f.code, {
-                  code: f.code,
-                  raw: f.raw,
-                  conf: f.conf,
-                  group: f.group || null,
-                  bbox: f.bbox ? {
-                    x: Math.max(0, Math.round(f.bbox.x0 * scaleX)),
-                    y: Math.max(0, Math.round(f.bbox.y0 * scaleY)),
-                    w: Math.max(1, Math.round((f.bbox.x1 - f.bbox.x0) * scaleX)),
-                    h: Math.max(1, Math.round((f.bbox.y1 - f.bbox.y0) * scaleY)),
-                  } : null,
-                });
-              } else if (f.conf > prev.conf) {
-                prev.conf = f.conf;
-                prev.raw = f.raw;
-              }
-            });
-          }
-
-          const found = Array.from(acc.values());
-          found.forEach(f => {
-            results.push({
-              id: 'r' + (++seq),
-              code: f.code,
-              raw: f.raw,
-              conf: f.conf,
-              imageId: imgId,
-              group: f.group,
-              box: f.bbox,
-              courier: detectCourier(f.code),
-              edited: false,
-            });
-          });
-
-          if (!found.length) {
-            const d = document.createElement('div');
-            d.className = 'err';
-            d.textContent = '✗ ' + file.name + '：没有识别到符合要求的单号（可尝试换档位 / 增大放大倍数）';
-            errorsEl.appendChild(d);
-          }
-        } catch (err) {
-          const d = document.createElement('div');
-          d.className = 'err';
-          d.textContent = '✗ ' + file.name + '：' + (err && err.message ? err.message : err);
-          errorsEl.appendChild(d);
-        }
-        setProgress('正在识别 ' + (i + 1) + ' / ' + total, (i + 1) / total);
-      }
-
-      if (worker) { try { await worker.terminate(); } catch (e) {} worker = null; }
-      goBtn.disabled = false;
-      stopBtn.style.display = 'none';
-
-      results = dedupe(results);
-
-      const secs = ((performance.now() - t0) / 1000).toFixed(1);
-      setProgress((stopping ? '已停止' : '识别完成') + '：共 ' + results.length + ' 个单号，用时 ' + secs + ' 秒', 1);
-      pendingFiles = [];
-      renderPreviews();
-      renderResults();
-    }
-
-    // 跨图去重：同一单号保留置信度最高的一条
-    function dedupe(list) {
-      const best = new Map();
-      for (const it of list) {
-        const prev = best.get(it.code);
-        if (!prev || it.conf > prev.conf) best.set(it.code, it);
-      }
-      return Array.from(best.values()).sort((a, b) => b.conf - a.conf);
-    }
-
-    async function decodeFile(file) {
-      const url = URL.createObjectURL(file);
-      const img = await new Promise((resolve, reject) => {
-        const im = new Image();
-        im.onload = () => resolve(im);
-        im.onerror = () => reject(new Error('无法解码该图片'));
-        im.src = url;
-      });
-      return { img, url };
-    }
-
-    /* ================= 预览列表 ================= */
-    function renderPreviews() {
-      if (!pendingFiles.length) { previewsEl.style.display = 'none'; return; }
-      previewsEl.style.display = '';
-      pcountEl.textContent = pendingFiles.length;
-      previewsEl.querySelectorAll('.preview-item').forEach(el => el.remove());
-      pendingFiles.forEach((f, i) => {
-        const item = document.createElement('div');
-        item.className = 'preview-item glass';
-        const url = URL.createObjectURL(f);
-        const kb = f.size / 1024;
-        item.innerHTML =
-          '<img src="' + url + '" alt="">' +
-          '<div class="p-info">' +
-            '<div class="p-name">' + esc(f.name) + '</div>' +
-            '<div class="p-size">' + kb.toFixed(1) + ' KB</div>' +
-          '</div>' +
-          '<button class="p-remove" title="移除">×</button>';
-        item.querySelector('.p-remove').addEventListener('click', () => {
-          pendingFiles.splice(i, 1);
-          renderPreviews();
-        });
-        previewsEl.appendChild(item);
-      });
-    }
-
-    clearBtn.addEventListener('click', () => { pendingFiles = []; renderPreviews(); });
-
-    dropzone.addEventListener('click', () => fileInput.click());
-    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      addFiles(e.dataTransfer.files);
-    });
-    fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
-
-    function addFiles(files) {
-      const imgs = Array.from(files).filter(f => f.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(f.name));
-      if (!imgs.length) { setProgress('没有可用的图片文件'); return; }
-      pendingFiles = pendingFiles.concat(imgs);
-      setProgress('已选择 ' + pendingFiles.length + ' 张照片');
-      renderPreviews();
-    }
-
-    /* ================= 结果渲染 ================= */
-    function matchesQuery(r, q) {
-      const img = images.find(im => im.id === r.imageId) || {};
-      return r.code.toLowerCase().includes(q) ||
-        (r.raw || '').toLowerCase().includes(q) ||
-        (r.courier || '').toLowerCase().includes(q) ||
-        (img.name || '').toLowerCase().includes(q);
-    }
-
-    function currentResults() {
-      const q = searchBox.value.trim().toLowerCase();
-      return q ? results.filter(r => matchesQuery(r, q)) : results;
-    }
-
+    /* ================= 结果列表 ================= */
     function renderResults() {
-      const list = currentResults();
-      const q = searchBox.value.trim().toLowerCase();
-      resultCard.style.display = '';
-      statBox.innerHTML = '共 <b>' + results.length + '</b> 个单号' +
-        (list.length !== results.length ? '，匹配 <b>' + list.length + '</b> 个' : '');
-      if (!list.length) {
-        emptyBox.style.display = '';
-        emptyBox.textContent = results.length ? '没有匹配的单号，换个关键字试试。' : '还没有识别到快递单号。';
-      } else {
-        emptyBox.style.display = 'none';
-        emptyBox.textContent = '';
+      const target = currentTarget();
+      resCount.textContent = found.length;
+      sheetStat.textContent = found.length ? (found.length + ' 个') : '';
+
+      if (!found.length) {
+        resultGrid.innerHTML = '<div class="empty-tip">把镜头对准快递单号，识别到的号码会出现在这里。</div>';
+        return;
       }
+
+      // 命中的排前面
+      const list = found.slice().sort((a, b) => {
+        const ha = isTargetHit(a.code, target) ? 1 : 0;
+        const hb = isTargetHit(b.code, target) ? 1 : 0;
+        if (ha !== hb) return hb - ha;
+        return b.at - a.at;
+      });
+
       resultGrid.innerHTML = '';
-
       list.forEach(r => {
-        const img = images.find(im => im.id === r.imageId);
-        const isCam = r.imageId === 'camera';
-        const isHit = !!q && matchesQuery(r, q);
-        const card = document.createElement('div');
-        card.className = 'result-card glass' + (isHit ? ' found' : '');
-
-        const lowConf = r.conf < 60;
-        card.innerHTML =
-          '<div class="thumb">' +
-            (img ? '<canvas></canvas>' : (isCam ? '<div class="cam-thumb">📷<span>实时画面</span></div>' : '')) +
-            '<span class="pos">' + esc(r.group ? ('组 ' + r.group) : ('#' + r.id.slice(1))) + '</span>' +
+        const hit = isTargetHit(r.code, target);
+        const item = document.createElement('div');
+        item.className = 'res-item' + (hit ? ' is-target' : '');
+        item.innerHTML =
+          '<div class="res-main">' +
+            '<div class="res-code">' + esc(r.code) + '</div>' +
+            '<div class="res-meta">' +
+              (hit ? '<span class="tag hit">你的快递</span>' : '') +
+              (r.courier ? '<span class="tag">' + esc(r.courier) + '</span>' : '') +
+              '置信度 ' + Math.round(r.conf) + '%' +
+            '</div>' +
           '</div>' +
-          '<div class="r-main">' +
-            '<div class="r-code" data-role="code">' + esc(r.code) + '</div>' +
-            '<div class="conf-bar' + (lowConf ? ' low' : '') + '"><i style="width:' + Math.round(r.conf) + '%"></i></div>' +
-            '<div class="r-meta">置信度 ' + Math.round(r.conf) + '%' +
-              (r.courier ? ' · <span class="badge">' + esc(r.courier) + '</span>' : '') +
-              (r.edited ? ' · <span class="badge">已编辑</span>' : '') +
-              (isCam ? '<br>来源：摄像头实时识别' + (r.box ? '（位置 ' + r.box.x + ',' + r.box.y + '）' : '')
-                     : (img ? '<br>来源：' + esc(img.name) + (r.box ? '（位置 ' + r.box.x + ',' + r.box.y + '）' : '') : '')) +
-            '</div>' +
-            '<div class="r-actions">' +
-              '<button class="mini-btn" data-act="copy">复制</button>' +
-              '<button class="mini-btn" data-act="locate">定位</button>' +
-              '<button class="mini-btn" data-act="edit">编辑</button>' +
-              '<button class="mini-btn danger" data-act="del">删除</button>' +
-            '</div>' +
+          '<div class="res-act">' +
+            '<button data-act="copy">复制</button>' +
+            '<button data-act="del" class="del">删除</button>' +
           '</div>';
-        resultGrid.appendChild(card);
+        resultGrid.appendChild(item);
 
-        if (img && img.source) drawThumb(card.querySelector('canvas'), img, r);
-
-        card.querySelector('[data-act="copy"]').addEventListener('click', async () => {
+        item.querySelector('[data-act="copy"]').addEventListener('click', async () => {
           toast(await copyText(r.code) ? '已复制 ' + r.code : '复制失败，请手动选择');
         });
-        card.querySelector('[data-act="locate"]').addEventListener('click', () => {
-          searchBox.value = r.code;
-          renderResults();
-          const target = resultGrid.querySelector('.result-card.found');
-          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          toast('已定位 ' + r.code);
-        });
-        card.querySelector('[data-act="edit"]').addEventListener('click', () => {
-          const next = window.prompt('修正单号：', r.code);
-          if (next == null) return;
-          const norm = normalizeCode(next);
-          if (!norm) { toast('单号不能为空'); return; }
-          r.code = norm;
-          r.edited = true;
-          r.courier = detectCourier(r.code);
-          renderResults();
-        });
-        card.querySelector('[data-act="del"]').addEventListener('click', () => {
-          results = results.filter(x => x.id !== r.id);
+        item.querySelector('[data-act="del"]').addEventListener('click', () => {
+          found = found.filter(x => x.id !== r.id);
           renderResults();
         });
       });
     }
 
-    // 在原图缩放图上画出单号位置高亮框
-    function drawThumb(canvas, img, r) {
-      if (!canvas) return;
-      const MAXW = 320;
-      const scale = Math.min(1, MAXW / img.w);
-      const w = Math.max(1, Math.round(img.w * scale));
-      const h = Math.max(1, Math.round(img.h * scale));
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img.source, 0, 0, w, h);
-      if (r.box) {
-        const pad = Math.max(2, r.box.h * 0.18 * scale);
-        const x = r.box.x * scale, y = r.box.y * scale;
-        const bw = r.box.w * scale, bh = r.box.h * scale;
-        ctx.fillStyle = 'rgba(5,150,105,0.20)';
-        ctx.fillRect(x - pad, y - pad, bw + pad * 2, bh + pad * 2);
-        ctx.strokeStyle = '#059669';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x - pad, y - pad, bw + pad * 2, bh + pad * 2);
-      }
-    }
+    /* ================= 抽屉与设置 ================= */
+    sheetToggle.addEventListener('click', () => sheet.classList.toggle('open'));
+    // 点抽屉顶部的手柄/标题也能收起
+    sheet.querySelector('.sheet-head').addEventListener('click', () => sheet.classList.remove('open'));
 
-    searchBox.addEventListener('input', renderResults);
-    searchBox.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        const hit = currentResults()[0];
-        if (hit) {
-          const target = resultGrid.querySelector('.result-card.found');
-          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          toast('定位到 ' + hit.code);
-        } else {
-          toast('没有匹配的单号');
+    settingsBtn.addEventListener('click', () => settingsPanel.classList.add('open'));
+    settingsClose.addEventListener('click', () => settingsPanel.classList.remove('open'));
+    settingsPanel.addEventListener('click', e => {
+      if (e.target === settingsPanel) settingsPanel.classList.remove('open');
+    });
+
+    // 换档位时丢弃缓存的 worker，实时识别会立即用新档位重建
+    qualitySel.addEventListener('change', async () => {
+      const wasRunning = camRunning;
+      if (camWorker) { try { await camWorker.terminate(); } catch (e) {} camWorker = null; }
+      if (wasRunning) {
+        camStat.textContent = '正在切换档位…';
+        try {
+          await ensureWorker(qualitySel.value || 'balanced');
+          camStat.textContent = '实时识别中…';
+        } catch (e) {
+          camStat.textContent = '切换失败：' + (e && e.message ? e.message : e);
         }
       }
     });
 
-    copyAllBtn.addEventListener('click', async () => {
-      if (!results.length) { toast('还没有结果'); return; }
-      const list = currentResults();
-      const text = list.map(r => r.code).join('\n');
-      toast(await copyText(text) ? '已复制 ' + list.length + ' 个单号' : '复制失败');
-    });
-
-    function sourceNameOf(r) {
-      if (r.imageId === 'camera') return '摄像头';
-      const img = images.find(im => im.id === r.imageId);
-      return img ? img.name : '';
+    /* ================= 我的单号输入 ================= */
+    /* ================= 我的单号输入 ================= */
+    // 输入变化时立刻用最近一次的识别结果重绘画框，
+    // 不用等下一帧，红色/绿色会即时跟着切换。
+    function redrawFromLastFrame() {
+      if (!camRunning || !lastDetections.length) return;
+      camVideo && camVideo.videoWidth > 0 &&
+        drawBoxes(lastDetections, camVideo.videoWidth, camVideo.videoHeight, currentTarget());
     }
 
+    targetInput.addEventListener('input', () => {
+      targetClear.classList.toggle('show', targetInput.value.length > 0);
+      lastHitCode = '';
+      renderResults();
+      redrawFromLastFrame();
+    });
+    targetClear.addEventListener('click', () => {
+      targetInput.value = '';
+      targetClear.classList.remove('show');
+      lastHitCode = '';
+      targetInput.focus();
+      renderResults();
+      redrawFromLastFrame();
+    });
+    targetInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        targetInput.blur();
+        const t = currentTarget();
+        if (t) {
+          const hit = found.some(r => isTargetHit(r.code, t));
+          toast(hit ? '已找到：' + t : '还没扫到 ' + t + '，继续对准货架');
+        }
+      }
+    });
+
+    /* ================= 结果操作 ================= */
+    copyAllBtn.addEventListener('click', async () => {
+      if (!found.length) { toast('还没有结果'); return; }
+      const text = found.map(r => r.code).join('\n');
+      toast(await copyText(text) ? '已复制 ' + found.length + ' 个单号' : '复制失败');
+    });
+
     exportCsvBtn.addEventListener('click', () => {
-      if (!results.length) { toast('还没有结果'); return; }
-      const rows = [['单号', '置信度', '快递公司', '来源', '位置X', '位置Y', '已编辑']];
-      currentResults().forEach(r => {
-        rows.push([r.code, Math.round(r.conf), r.courier || '', sourceNameOf(r),
-          r.box ? r.box.x : '', r.box ? r.box.y : '', r.edited ? '是' : '']);
+      if (!found.length) { toast('还没有结果'); return; }
+      const target = currentTarget();
+      const rows = [['单号', '置信度', '快递公司', '是否我的单号', '识别时间']];
+      found.forEach(r => {
+        rows.push([r.code, Math.round(r.conf), r.courier || '',
+          isTargetHit(r.code, target) ? '是' : '',
+          new Date(r.at).toLocaleString('zh-CN')]);
       });
       const csv = '\uFEFF' + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
       download('快递单号-' + new Date().toISOString().slice(0, 10) + '.csv', csv, 'text/csv;charset=utf-8');
@@ -1308,39 +1330,57 @@
     });
 
     exportJsonBtn.addEventListener('click', () => {
-      if (!results.length) { toast('还没有结果'); return; }
-      const payload = currentResults().map(r => ({
+      if (!found.length) { toast('还没有结果'); return; }
+      const target = currentTarget();
+      const payload = found.map(r => ({
         code: r.code,
-        raw: r.raw || null,
         confidence: Math.round(r.conf),
         courier: r.courier || null,
-        edited: !!r.edited,
-        source: sourceNameOf(r) || null,
-        position: r.box || null,
+        isMyNumber: isTargetHit(r.code, target),
+        scannedAt: new Date(r.at).toISOString(),
+        source: '摄像头',
       }));
       download('快递单号-' + new Date().toISOString().slice(0, 10) + '.json',
-        JSON.stringify({ exportedAt: new Date().toISOString(), count: payload.length, items: payload }, null, 2),
+        JSON.stringify({ exportedAt: new Date().toISOString(), myNumber: target || null, count: payload.length, items: payload }, null, 2),
         'application/json');
       toast('已导出 JSON');
     });
 
     clearResultsBtn.addEventListener('click', () => {
-      results = [];
-      searchBox.value = '';
-      errorsEl.innerHTML = '';
-      camFoundTotal = 0;
-      if (camRunning) camStat.textContent = '实时识别中…';
-      else camStat.textContent = '';
+      found = [];
+      lastHitCode = '';
       renderResults();
-      setProgress('');
+      toast('已清空结果');
     });
 
-    goBtn.addEventListener('click', run);
-    stopBtn.addEventListener('click', () => { stopping = true; toast('正在停止…'); });
+    /* ================= 事件绑定 & 初始化 ================= */
+    camStartBtn.addEventListener('click', camStart);
+    camStopBtn.addEventListener('click', () => { camStop(); camStat.textContent = '已停止'; });
 
-    window.addEventListener('beforeunload', () => {
-      images.forEach(im => { try { URL.revokeObjectURL(im.url); } catch (e) {} });
+    // 页面尺寸变化时重画（全屏/旋转）
+    window.addEventListener('resize', () => {
+      if (!camRunning) {
+        const ctx = camOverlay.getContext('2d');
+        if (ctx) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, camOverlay.width, camOverlay.height); }
+      }
     });
+
+    // 切到后台就暂停识别，回来再继续，省电
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && camRunning) {
+        camRunning = false;
+        if (camRAF) { cancelAnimationFrame(camRAF); camRAF = 0; }
+      } else if (!document.hidden && camStream && !camRunning) {
+        camRunning = true;
+        camLastShot = '';
+        camRAF = requestAnimationFrame(camTick);
+      }
+    });
+
+    // 离开页面时关摄像头，别把指示灯留着
+    window.addEventListener('beforeunload', () => camStop());
+
+    renderResults();
   </script>
   <script src="../assets/js/baidu-analytics.js"></script>
 </body>
