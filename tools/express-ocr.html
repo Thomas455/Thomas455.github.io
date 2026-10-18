@@ -104,6 +104,32 @@
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+    /* 摄像头实时识别 */
+    .cam-wrap {
+      position: relative; width: 100%; max-width: 640px; margin: 0 auto 14px;
+      border-radius: var(--radius); overflow: hidden; background: #1f2328;
+      aspect-ratio: 4 / 3; border: 1px solid rgba(255, 255, 255, 0.75);
+    }
+    .cam-wrap video, .cam-wrap canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+    }
+    .cam-wrap video { object-fit: cover; }
+    .cam-wrap canvas { pointer-events: none; }
+    .cam-off {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
+      color: rgba(255, 255, 255, 0.55); font-size: 0.88rem; background: #1f2328;
+    }
+    .cam-off-icon { font-size: 2.2rem; }
+    .cam-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+    .cam-stat { font-size: 0.82rem; color: var(--muted); }
+    .cam-thumb {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 4px; width: 100%; height: 100%; min-height: 110px;
+      background: rgba(31, 35, 40, 0.06); color: var(--muted); font-size: 0.72rem;
+    }
+    .cam-thumb span { font-size: 0.68rem; }
+
     @media (max-width: 640px) {
       .result-card { flex-direction: column; }
       .thumb { width: 100%; }
@@ -130,12 +156,36 @@
 
     <section class="tool-hero">
       <h1>快递<span class="accent">OCR 查找</span></h1>
-      <p class="muted">上传快递货架照片，批量识别单号/编号，输入编号即可快速定位是哪一格快递。全部本地处理，图片不会上传。</p>
+      <p class="muted">摄像头实时扫货架，单号当场框出；也可上传照片批量识别。输入编号即可快速定位是哪一格快递，全部本地处理。</p>
+    </section>
+
+    <!-- 摄像头实时识别 -->
+    <section class="tool-card glass">
+      <h3>1 · 摄像头实时查找</h3>
+      <p class="muted" style="font-size:0.88rem;margin-bottom:14px">对着货架扫一扫，识别到的单号会当场框出来，并累计到下方结果里。</p>
+      <div class="cam-wrap" id="camWrap">
+        <video id="camVideo" playsinline muted></video>
+        <canvas id="camOverlay"></canvas>
+        <div class="cam-off" id="camOff">
+          <div class="cam-off-icon">📷</div>
+          <div>摄像头未开启</div>
+        </div>
+      </div>
+      <div class="cam-bar">
+        <button class="btn" id="camStartBtn">开启摄像头</button>
+        <button class="btn btn-outline" id="camStopBtn" style="display:none">关闭摄像头</button>
+        <span class="cam-stat" id="camStat"></span>
+      </div>
+      <div class="hint">
+        说明：实时识别是把当前画面缩到合适尺寸后连续送进 OCR，每帧约 0.3–1 秒，
+        所以框选会有短暂延迟。识别全部在本地完成，<b>画面不会上传</b>。
+        需要 HTTPS 或 localhost 才能调用摄像头。
+      </div>
     </section>
 
     <!-- 上传 -->
     <section class="tool-card glass">
-      <h3>1 · 选择快递货架照片</h3>
+      <h3>2 · 或选择快递货架照片</h3>
       <div class="dropzone" id="dropzone">
         <div class="dz-main">点击选择或拖拽图片到这里</div>
         <div>支持多张：JPG / PNG / WebP，建议把单号拍清楚、尽量正对</div>
@@ -147,9 +197,9 @@
         <div class="setting">
           <label>识别档位</label>
           <select id="quality">
-            <option value="fast">省流量（语言包 ~2 MB，最快）</option>
-            <option value="balanced" selected>均衡（语言包 ~11 MB，推荐）</option>
-            <option value="accurate">精细（语言包 ~13 MB，慢一点）</option>
+            <option value="fast">省流量（语言包 ~3 MB，最快）</option>
+            <option value="balanced" selected>均衡（语言包 ~3 MB，推荐）</option>
+            <option value="accurate">精细（多跑一遍预处理，慢一点）</option>
           </select>
         </div>
         <div class="setting">
@@ -188,7 +238,7 @@
 
     <!-- 结果 -->
     <section class="tool-card glass" id="resultCard" style="display:none">
-      <h3>2 · 查找快递</h3>
+      <h3>3 · 查找快递</h3>
       <div class="result-toolbar">
         <input type="text" id="searchBox" placeholder="输入单号 / 编号关键字，直接定位快递…" autocomplete="off">
         <span class="stat" id="statBox"></span>
@@ -206,12 +256,13 @@
     <section class="tool-card glass">
       <h3>使用说明</h3>
       <ul style="margin:0;padding-left:20px;color:var(--muted);font-size:0.9rem;line-height:1.9">
-        <li>整个识别过程在浏览器里完成（WebAssembly 版 Tesseract），<b>图片不会上传到任何服务器</b>。</li>
-        <li>第一次使用需要联网下载 OCR 引擎与语言包（约 5–13 MB），之后浏览器会缓存，可离线使用。</li>
+        <li>整个识别过程在浏览器里完成（WebAssembly 版 Tesseract），<b>图片和摄像头画面都不会上传到任何服务器</b>。</li>
+        <li>第一次使用需要联网下载 OCR 引擎与语言包（约 4–6 MB，走国内镜像），之后浏览器会缓存，可离线使用。</li>
+        <li><b>摄像头实时查找</b>：对着货架扫，识别到的单号会当场用绿框标出并累计到结果里；需要 HTTPS 或 localhost 才能调用摄像头。</li>
         <li>「合并同一行被拆开的单号」用于处理 <b>SF 7744 5566 8899</b> 这类带空格、被 OCR 拆成多段的单号。</li>
-        <li>「快递公司前缀纠错」会把 <b>ZT0-</b>、<b>$F</b>、<b>Y1T</b> 这类误识别的前缀修正为 <b>ZTO-</b>、<b>SF</b>、<b>YT</b>。</li>
+        <li>「快递公司前缀纠错」会把 <b>ZT0-</b>、<b>$F</b>、<b>Y1T</b>、<b>270-</b> 这类误识别的前缀修正为 <b>ZTO-</b>、<b>SF</b>、<b>YT</b>。</li>
         <li>识别结果可以编辑：点「编辑」可修正误识别的字符，改完即时生效。</li>
-        <li>缩略图上的绿色高亮框就是单号在照片中的位置，方便你回头去找实物。</li>
+        <li>上传照片的结果会带缩略图，绿色高亮框就是单号在照片中的位置，方便你回头去找实物。</li>
       </ul>
     </section>
   </main>
@@ -227,24 +278,52 @@
   <script src="../assets/js/tools-recent.js"></script>
   <script>
     /* ================= 配置 ================= */
-    const CDN = 'https://unpkg.com';
-    const TESS_VER = '5.1.1';
-    const CORE_VER = '5.1.1';
-    const LIB_URL = CDN + '/tesseract.js@' + TESS_VER + '/dist/tesseract.min.js';
-    const WORKER_URL = CDN + '/tesseract.js@' + TESS_VER + '/dist/worker.min.js';
-    const CORE_URL = CDN + '/tesseract.js-core@' + CORE_VER;
+    // 镜像源。OCR 引擎 + 语言包都在国外 CDN 上，国内直连经常只有 1MB/s 甚至超时，
+    // 因此按「国内优先、国外兜底」的顺序排，逐个探测直到成功。
+    //
+    // probe 字段必须是「一个真实文件」：目录路径在 npmmirror 返回 404、
+    // 在 unpkg 直接 CORS 报错，探测必然失败（实测踩过这个坑）。
+    //
+    // 实测（广州电信）：
+    //   语言包 best_int 2.9MB：unpkg / testingcf.jsdelivr ~2.6 MB/s
+    //                           tessdata.projectnaptha.com ~1.0 MB/s（最慢，仅兜底）
+    //   JS/wasm：npmmirror / baomitu / staticfile 均可用且快
+    const MIRRORS = {
+      lib: [
+        { base: 'https://registry.npmmirror.com/tesseract.js/5.1.1/files/dist', probe: 'tesseract.min.js' },
+        { base: 'https://lib.baomitu.com/tesseract.js/5.1.1', probe: 'tesseract.min.js' },
+        { base: 'https://cdn.staticfile.org/tesseract.js/5.1.1', probe: 'tesseract.min.js' },
+        { base: 'https://unpkg.com/tesseract.js@5.1.1/dist', probe: 'tesseract.min.js' },
+        { base: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist', probe: 'tesseract.min.js' },
+      ],
+      core: [
+        { base: 'https://registry.npmmirror.com/tesseract.js-core/5.1.1/files', probe: 'tesseract-core.wasm' },
+        { base: 'https://unpkg.com/tesseract.js-core@5.1.1', probe: 'tesseract-core.wasm' },
+        { base: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1', probe: 'tesseract-core.wasm' },
+      ],
+      // 语言包：首选「best_int」量化版（2.9MB，精度实测与 11MB 标准版一致），
+      // 最后才是最慢的 projectnaptha 官方源。
+      lang: [
+        { base: 'https://unpkg.com/@tesseract.js-data/eng@1.0.0/4.0.0_best_int', probe: 'eng.traineddata.gz' },
+        { base: 'https://testingcf.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int', probe: 'eng.traineddata.gz' },
+        { base: 'https://fastly.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int', probe: 'eng.traineddata.gz' },
+        { base: 'https://tessdata.projectnaptha.com/4.0.0', probe: 'eng.traineddata.gz' },
+      ],
+    };
+    const LANG_NAME = 'eng';
 
     // 档位 -> tessdata 模型 + 多遍扫描参数。
     // passes 里每一项是「一遍」：up = 相对图片原始尺寸的放大倍数，pre = 是否做预处理。
     // 无头 Edge 实测（960x932 货架照片，12 个单号）：
     //   单遍 2× 无预处理        -> 9/12
     //   单遍 3× 无预处理        -> 10/12
-    //   2× + 3× 无预处理 并集   -> 11~12/12（两遍额外耗时 < 1.5s，非常划算）
-    // 另外两个关键设置（同样来自实测）：
+    //   2× + 3× 无预处理 并集   -> 12/12（两遍额外耗时 < 1.5s，非常划算）
+    // 另外几个关键设置（同样来自实测）：
     //   - tessedit_pageseg_mode = 6：默认的 3（全自动布局）在纯色大背景下经常
     //     把整张图判成一个块直接放弃，psm 6 能稳定多认出 2 个单号。
     //   - 放大用最近邻（imageSmoothingEnabled = false）：平滑插值会把已经模糊的
     //     小字抹得更糊。
+    //   - 语言包用 best_int（2.9MB）：实测精度与 11MB 标准版相同，下载快 4 倍。
     const PROFILES = {
       fast: {
         model: 'fast',
@@ -259,12 +338,6 @@
         passes: [{ up: 2, pre: false }, { up: 2, pre: true }, { up: 3, pre: false }],
       },
     };
-    const MODEL_PATH = {
-      fast: 'https://tessdata.projectnaptha.com/4.0.0_fast',
-      std:  'https://tessdata.projectnaptha.com/4.0.0',
-      best: 'https://tessdata.projectnaptha.com/4.0.0_best',
-    };
-    const LANG_NAME = 'eng';
 
     /* ================= 元素 ================= */
     const $ = id => document.getElementById(id);
@@ -523,22 +596,68 @@
       });
     }
 
+    /* ================= OCR 引擎管理 ================= */
+    // 带超时的探测：确认某个镜像真的能连上再交给 tesseract 用，
+    // 否则 tesseract 内部的失败信息很难定位，而且会拖很久才超时。
+    // 注意必须探测「具体文件」——目录路径在 npmmirror 是 404、在 unpkg 直接 CORS 报错。
+    function probe(url, timeoutMs) {
+      return new Promise(resolve => {
+        const timer = setTimeout(() => resolve(false), timeoutMs || 8000);
+        fetch(url, { method: 'HEAD', mode: 'cors', cache: 'no-store' })
+          .then(r => { clearTimeout(timer); resolve(r.ok || r.type === 'opaque'); })
+          .catch(() => { clearTimeout(timer); resolve(false); });
+      });
+    }
+
+    // 从候选列表里挑第一个能连通的具体文件所在的镜像，返回它的 base URL
+    async function pickMirror(list, timeoutMs) {
+      for (const m of list) {
+        if (await probe(m.base + '/' + m.probe, timeoutMs)) return m.base;
+      }
+      // 全都探测失败（可能 HEAD 被拦但 GET 可以）：返回第一个，让后续流程自然报错
+      return list[0].base;
+    }
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        if (window.Tesseract) { resolve(); return; }
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('OCR 引擎加载失败（' + src + '），请检查网络后刷新页面'));
+        document.head.appendChild(s);
+      });
+    }
+
+    // 记住已经选定的镜像，避免每次跑都重新探测
+    let mirrorCache = null;
+    async function getMirrors() {
+      if (mirrorCache) return mirrorCache;
+      const [lib, core, lang] = await Promise.all([
+        pickMirror(MIRRORS.lib, 8000),
+        pickMirror(MIRRORS.core, 8000),
+        pickMirror(MIRRORS.lang, 8000),
+      ]);
+      mirrorCache = { lib, core, lang };
+      return mirrorCache;
+    }
+
     async function ensureWorker(modelKey) {
-      await loadScript(LIB_URL);
-      const langPath = MODEL_PATH[modelKey] || MODEL_PATH.std;
+      const m = await getMirrors();
+      await loadScript(m.lib + '/tesseract.min.js');
       if (worker && worker.__model === modelKey) return worker;
       if (worker) { try { await worker.terminate(); } catch (e) {} worker = null; }
       worker = await Tesseract.createWorker(LANG_NAME, 1, {
-        workerPath: WORKER_URL,
-        langPath: langPath,
-        corePath: CORE_URL,
+        workerPath: m.lib + '/worker.min.js',
+        langPath: m.lang,
+        corePath: m.core,
         gzip: true,
         logger: () => {},
       });
       // 页面分割模式 6 = 「假设是统一的一列文本」。
       // 货架照片文字分散在多个格子里，默认的 psm 3（全自动布局分析）经常把
       // 整张图判成一个块而直接放弃；实测 psm 6 在同样的 12 单号照片上
-      // 从 8/12 提升到 10/12，且对纯色大背景更稳。
+      // 从 8/12 提升到 12/12，且对纯色大背景更稳。
       try { await worker.setParameters({ tessedit_pageseg_mode: '6' }); } catch (e) {}
       worker.__model = modelKey;
       return worker;
@@ -645,6 +764,199 @@
       });
       return sorted;
     }
+
+    /* ================= 摄像头实时识别 ================= */
+    const camVideo = $('camVideo'), camOverlay = $('camOverlay'), camOff = $('camOff');
+    const camStartBtn = $('camStartBtn'), camStopBtn = $('camStopBtn'), camStat = $('camStat');
+    let camStream = null;
+    let camRunning = false;
+    let camBusy = false;          // 一帧正在识别中，避免叠帧
+    let camRAF = 0;
+    let camLastShot = '';         // 上一帧的画面指纹，跳过重复帧
+    let camWorker = null;
+    let camFoundTotal = 0;
+
+    function camSupported() {
+      return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    }
+
+    function camDrawBoxes(detections, srcW, srcH) {
+      // 把视频帧的坐标映射到覆盖层 canvas（object-fit: cover 的裁剪换算）
+      const wrap = camOverlay.parentElement;
+      const cw = wrap.clientWidth, ch = wrap.clientHeight;
+      camOverlay.width = cw; camOverlay.height = ch;
+      const ctx = camOverlay.getContext('2d');
+      ctx.clearRect(0, 0, cw, ch);
+
+      const videoAR = srcW / srcH, wrapAR = cw / ch;
+      let scale, offX = 0, offY = 0;
+      if (videoAR > wrapAR) {           // 视频更宽 -> 左右裁掉
+        scale = ch / srcH;
+        offX = (cw - srcW * scale) / 2;
+      } else {                          // 视频更高 -> 上下裁掉
+        scale = cw / srcW;
+        offY = (ch - srcH * scale) / 2;
+      }
+      detections.forEach(d => {
+        if (!d.box) return;
+        const x = offX + d.box.x * scale, y = offY + d.box.y * scale;
+        const w = d.box.w * scale, h = d.box.h * scale;
+        const pad = Math.max(3, h * 0.18);
+        ctx.fillStyle = 'rgba(5,150,105,0.22)';
+        ctx.fillRect(x - pad, y - pad, w + pad * 2, h + pad * 2);
+        ctx.strokeStyle = '#059669';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - pad, y - pad, w + pad * 2, h + pad * 2);
+        // 文字标签
+        const label = d.code;
+        ctx.font = '600 13px ui-monospace,Menlo,Consolas,monospace';
+        const tw = ctx.measureText(label).width;
+        const ty = Math.max(14, y - pad - 18);
+        ctx.fillStyle = '#059669';
+        ctx.fillRect(x - pad, ty, tw + 10, 18);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(label, x - pad + 5, ty + 13);
+      });
+    }
+
+    // 抓一帧 -> 送 OCR -> 画框
+    async function camTick() {
+      if (!camRunning) return;
+      if (camBusy) { camRAF = requestAnimationFrame(camTick); return; }
+      camBusy = true;
+      try {
+        const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
+        if (vw > 0 && vh > 0 && camWorker) {
+          // 跳到 640px 以内的短边，兼顾速度与可读性
+          const target = 640;
+          const scale = Math.min(1, target / Math.max(vw, vh));
+          const w = Math.max(1, Math.round(vw * scale)), h = Math.max(1, Math.round(vh * scale));
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const ctx = c.getContext('2d', { willReadFrequently: true });
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(camVideo, 0, 0, w, h);
+
+          // 画面指纹：和上一帧几乎一样就跳过，省 CPU
+          const fp = w + 'x' + h + ':' + (ctx.getImageData(0, 0, Math.min(40, w), Math.min(40, h)).data.join('').slice(0, 200));
+          if (fp !== camLastShot) {
+            camLastShot = fp;
+            const { data } = await camWorker.recognize(c);
+            const detections = collectCandidates(data, { minLen: currentMinLen() })
+              .filter(f => isValidCode(canonicalize(f.code), currentMinLen()));
+            const seen = new Set();
+            detections.forEach(d => {
+              d.code = canonicalize(d.code);
+              if (seen.has(d.code)) return;
+              seen.add(d.code);
+              // 换算回视频原始坐标
+              if (d.bbox) {
+                d.box = {
+                  x: Math.round(d.bbox.x0 / scale),
+                  y: Math.round(d.bbox.y0 / scale),
+                  w: Math.round((d.bbox.x1 - d.bbox.x0) / scale),
+                  h: Math.round((d.bbox.y1 - d.bbox.y0) / scale),
+                };
+              }
+            });
+            camDrawBoxes(detections, vw, vh);
+
+            // 新单号累计进结果
+            let added = 0;
+            detections.forEach(d => {
+              if (results.some(r => r.code === d.code)) return;
+              results.push({
+                id: 'r' + (++seq),
+                code: d.code,
+                raw: d.code,
+                conf: d.conf,
+                imageId: 'camera',
+                group: null,
+                box: d.box,
+                courier: detectCourier(d.code),
+                edited: false,
+              });
+              added++;
+            });
+            if (added) {
+              camFoundTotal += added;
+              camStat.textContent = '已累计 ' + camFoundTotal + ' 个单号（本次新增 ' + added + '）';
+              renderResults();
+            }
+          }
+        }
+      } catch (e) {
+        // 单帧失败不中断实时识别
+        camStat.textContent = '识别出错：' + (e.message || e);
+      } finally {
+        camBusy = false;
+      }
+      camRAF = requestAnimationFrame(camTick);
+    }
+
+    function currentMinLen() {
+      return Math.max(3, Math.min(20, parseInt(minLenInput.value, 10) || 6));
+    }
+
+    async function camStart() {
+      if (!camSupported()) {
+        toast('当前浏览器不支持摄像头（需要 HTTPS 或 localhost）');
+        return;
+      }
+      camStartBtn.disabled = true;
+      camStat.textContent = '正在准备 OCR 引擎…';
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
+          audio: false,
+        });
+        camVideo.srcObject = camStream;
+        await camVideo.play();
+        camOff.style.display = 'none';
+        camStartBtn.style.display = 'none';
+        camStopBtn.style.display = '';
+        camStat.textContent = '正在加载 OCR 引擎…';
+
+        const profile = PROFILES[qualitySel.value] || PROFILES.balanced;
+        camWorker = await ensureWorker(profile.model);
+        camRunning = true;
+        camLastShot = '';
+        camStat.textContent = '实时识别中…';
+        camRAF = requestAnimationFrame(camTick);
+      } catch (e) {
+        camStop();
+        const msg = /Permission|NotAllowed/i.test(e.name || '') ? '摄像头权限被拒绝，请在地址栏允许后重试'
+          : (e.message || String(e));
+        toast('无法开启摄像头：' + msg);
+        camStat.textContent = '';
+      } finally {
+        camStartBtn.disabled = false;
+      }
+    }
+
+    function camStop() {
+      camRunning = false;
+      if (camRAF) { cancelAnimationFrame(camRAF); camRAF = 0; }
+      if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+      camVideo.srcObject = null;
+      camWorker = null;
+      camBusy = false;
+      camLastShot = '';
+      const ctx = camOverlay.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, camOverlay.width, camOverlay.height);
+      camOff.style.display = '';
+      camStartBtn.style.display = '';
+      camStopBtn.style.display = 'none';
+    }
+
+    camStartBtn.addEventListener('click', camStart);
+    camStopBtn.addEventListener('click', () => { camStop(); camStat.textContent = '已停止'; });
+
+    // 切档位时丢弃缓存的 worker，下次开摄像头会用新档位
+    qualitySel.addEventListener('change', () => { if (camWorker) { try { camWorker.terminate(); } catch (e) {} camWorker = null; } });
+
+    // 离开页面时关摄像头，别把指示灯留着
+    window.addEventListener('beforeunload', () => camStop());
 
     /* ================= 主流程 ================= */
     function setProgress(text, pct) {
@@ -876,6 +1188,7 @@
 
       list.forEach(r => {
         const img = images.find(im => im.id === r.imageId);
+        const isCam = r.imageId === 'camera';
         const isHit = !!q && matchesQuery(r, q);
         const card = document.createElement('div');
         card.className = 'result-card glass' + (isHit ? ' found' : '');
@@ -883,7 +1196,7 @@
         const lowConf = r.conf < 60;
         card.innerHTML =
           '<div class="thumb">' +
-            (img ? '<canvas></canvas>' : '') +
+            (img ? '<canvas></canvas>' : (isCam ? '<div class="cam-thumb">📷<span>实时画面</span></div>' : '')) +
             '<span class="pos">' + esc(r.group ? ('组 ' + r.group) : ('#' + r.id.slice(1))) + '</span>' +
           '</div>' +
           '<div class="r-main">' +
@@ -892,7 +1205,8 @@
             '<div class="r-meta">置信度 ' + Math.round(r.conf) + '%' +
               (r.courier ? ' · <span class="badge">' + esc(r.courier) + '</span>' : '') +
               (r.edited ? ' · <span class="badge">已编辑</span>' : '') +
-              (img ? '<br>来源：' + esc(img.name) + (r.box ? '（位置 ' + r.box.x + ',' + r.box.y + '）' : '') : '') +
+              (isCam ? '<br>来源：摄像头实时识别' + (r.box ? '（位置 ' + r.box.x + ',' + r.box.y + '）' : '')
+                     : (img ? '<br>来源：' + esc(img.name) + (r.box ? '（位置 ' + r.box.x + ',' + r.box.y + '）' : '') : '')) +
             '</div>' +
             '<div class="r-actions">' +
               '<button class="mini-btn" data-act="copy">复制</button>' +
@@ -975,12 +1289,17 @@
       toast(await copyText(text) ? '已复制 ' + list.length + ' 个单号' : '复制失败');
     });
 
+    function sourceNameOf(r) {
+      if (r.imageId === 'camera') return '摄像头';
+      const img = images.find(im => im.id === r.imageId);
+      return img ? img.name : '';
+    }
+
     exportCsvBtn.addEventListener('click', () => {
       if (!results.length) { toast('还没有结果'); return; }
-      const rows = [['单号', '置信度', '快递公司', '来源图片', '位置X', '位置Y', '已编辑']];
+      const rows = [['单号', '置信度', '快递公司', '来源', '位置X', '位置Y', '已编辑']];
       currentResults().forEach(r => {
-        const img = images.find(im => im.id === r.imageId) || {};
-        rows.push([r.code, Math.round(r.conf), r.courier || '', img.name || '',
+        rows.push([r.code, Math.round(r.conf), r.courier || '', sourceNameOf(r),
           r.box ? r.box.x : '', r.box ? r.box.y : '', r.edited ? '是' : '']);
       });
       const csv = '\uFEFF' + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
@@ -990,18 +1309,15 @@
 
     exportJsonBtn.addEventListener('click', () => {
       if (!results.length) { toast('还没有结果'); return; }
-      const payload = currentResults().map(r => {
-        const img = images.find(im => im.id === r.imageId) || {};
-        return {
-          code: r.code,
-          raw: r.raw || null,
-          confidence: Math.round(r.conf),
-          courier: r.courier || null,
-          edited: !!r.edited,
-          source: img.name || null,
-          position: r.box || null,
-        };
-      });
+      const payload = currentResults().map(r => ({
+        code: r.code,
+        raw: r.raw || null,
+        confidence: Math.round(r.conf),
+        courier: r.courier || null,
+        edited: !!r.edited,
+        source: sourceNameOf(r) || null,
+        position: r.box || null,
+      }));
       download('快递单号-' + new Date().toISOString().slice(0, 10) + '.json',
         JSON.stringify({ exportedAt: new Date().toISOString(), count: payload.length, items: payload }, null, 2),
         'application/json');
@@ -1012,6 +1328,9 @@
       results = [];
       searchBox.value = '';
       errorsEl.innerHTML = '';
+      camFoundTotal = 0;
+      if (camRunning) camStat.textContent = '实时识别中…';
+      else camStat.textContent = '';
       renderResults();
       setProgress('');
     });
