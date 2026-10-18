@@ -104,7 +104,7 @@
     }
     .icon-btn:hover { background: rgba(255, 255, 255, 0.22); }
 
-    /* ===== 单号输入条 ===== */
+    /* ===== 单号输入条（支持多个单号） ===== */
     .targetbar {
       position: fixed;
       top: calc(env(safe-area-inset-top, 0px) + 58px);
@@ -115,39 +115,83 @@
     .targetbar .field {
       flex: 1; min-width: 0;
       position: relative;
-      display: flex; align-items: center;
-    }
-    .targetbar input {
-      width: 100%;
-      padding: 11px 38px 11px 38px;
-      border-radius: 999px;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+      padding: 6px 10px 6px 36px;
+      border-radius: 16px;
       border: 1px solid rgba(255, 255, 255, 0.2);
-      background: rgba(15, 18, 23, 0.72);
+      background: rgba(15, 18, 23, 0.78);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      max-height: 34vh;
+      overflow-y: auto;
+    }
+    .targetbar .field:focus-within {
+      border-color: rgba(239, 68, 68, 0.85);
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
+    }
+    .targetbar .lens {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      font-size: 0.95rem; opacity: 0.6;
+      pointer-events: none;
+    }
+    .targetbar input {
+      flex: 1 1 140px;
+      min-width: 90px;
+      border: none;
+      background: transparent;
       color: #fff;
       font-size: 0.92rem;
       letter-spacing: 0.5px;
       outline: none;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      padding: 5px 2px;
     }
     .targetbar input::placeholder { color: rgba(255, 255, 255, 0.42); font-family: inherit; letter-spacing: 0; }
-    .targetbar input:focus { border-color: rgba(239, 68, 68, 0.85); box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22); }
-    .targetbar .lens {
-      position: absolute; left: 13px;
-      font-size: 0.95rem; opacity: 0.6;
-      pointer-events: none;
-    }
-    .targetbar .clear {
-      position: absolute; right: 8px;
-      width: 22px; height: 22px;
-      border: none; border-radius: 50%;
-      background: rgba(255, 255, 255, 0.16);
-      color: #fff; font-size: 0.8rem; line-height: 1;
+
+    /* 手机友好：不依赖键盘回车，始终有个「添加」按钮 */
+    .addbtn {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: none;
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.8rem; font-weight: 700;
       cursor: pointer;
-      display: none;
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
-    .targetbar .clear.show { display: block; }
+    .addbtn:active { background: #dc2626; transform: scale(0.96); }
+    .addbtn:disabled { opacity: 0.4; cursor: default; }
+
+    /* 已添加的单号标签 */
+    .chips { display: contents; }
+    .tchip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 6px 4px 10px;
+      border-radius: 999px;
+      background: rgba(239, 68, 68, 0.9);
+      color: #fff;
+      font-size: 0.78rem; font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: 0.3px;
+      max-width: 100%;
+      animation: chipIn 0.16s ease-out;
+    }
+    @keyframes chipIn { from { transform: scale(0.86); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .tchip .x {
+      width: 17px; height: 17px;
+      display: flex; align-items: center; justify-content: center;
+      border: none; border-radius: 50%;
+      background: rgba(0, 0, 0, 0.28);
+      color: #fff; font-size: 0.72rem; line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .tchip .x:hover { background: rgba(0, 0, 0, 0.5); }
+    .tchip.found { background: #16a34a; }
+    .tchip .ok { font-size: 0.72rem; }
 
     /* ===== 命中横幅 ===== */
     /* 放在顶部单号栏下方，避免遮挡底部抽屉与画面上方的单号 */
@@ -276,7 +320,13 @@
       border-radius: 12px;
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      border-left: 3px solid rgba(16, 185, 129, 0.7);   /* 普通单号：绿色左侧条 */
+      border-left: 3px solid rgba(16, 185, 129, 0.7);   /* 正常：绿色左侧条 */
+    }
+    /* 存疑：低置信度，用黄色条提示，但结果照常保留 */
+    .res-item.is-doubt {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.4);
+      border-left-color: #f59e0b;
     }
     /* 命中我自己输入的单号：整块红色高亮，与画面上的红框对应 */
     .res-item.is-target {
@@ -300,6 +350,7 @@
       margin-right: 4px;
     }
     .res-meta .tag.hit { background: rgba(239, 68, 68, 0.28); color: #fecaca; }
+    .res-meta .tag.doubt { background: rgba(245, 158, 11, 0.28); color: #fde68a; }
     .res-act {
       flex-shrink: 0;
       display: flex; flex-direction: column; gap: 5px;
@@ -396,13 +447,23 @@
       .topbar { padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px; gap: 8px; }
       .topbar .title { font-size: 0.88rem; }
       .topbar .back, .icon-btn { width: 34px; height: 34px; font-size: 1rem; }
-      /* 竖屏拍摄时画面横向被裁得厉害，输入框放到标题正下方并缩短，
+      /* 竖屏拍摄时画面横向被裁得厉害，输入区放到标题正下方并收紧，
          给画面上方的单号留出可见区域 */
       .targetbar {
         top: calc(env(safe-area-inset-top, 0px) + 50px);
         left: 10px; right: 10px;
       }
-      .targetbar input { font-size: 0.86rem; padding: 9px 32px 9px 32px; }
+      .targetbar .field {
+        padding: 5px 6px 5px 30px;
+        border-radius: 14px;
+        gap: 4px;
+        max-height: 26vh;
+      }
+      .targetbar .lens { left: 10px; font-size: 0.85rem; }
+      .targetbar input { font-size: 0.82rem; padding: 4px 2px; min-width: 70px; }
+      .tchip { font-size: 0.72rem; padding: 3px 5px 3px 8px; gap: 5px; }
+      .tchip .x { width: 15px; height: 15px; font-size: 0.66rem; }
+      .addbtn { padding: 5px 11px; font-size: 0.74rem; }
       .bottom { padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 10px); gap: 8px; }
       .cam-btn { padding: 11px 16px; font-size: 0.86rem; }
       .cam-stat { font-size: 0.7rem; }
@@ -414,6 +475,13 @@
         padding: 11px 20px; font-size: 0.92rem;
       }
     }
+
+    /* 手机弹出键盘时：把输入区顶到可视区顶部，避免被键盘挡住 */
+    .keyboard-open .targetbar {
+      top: calc(env(safe-area-inset-top, 0px) + 8px);
+    }
+    .keyboard-open .topbar { opacity: 0.25; }
+    .keyboard-open .bottom { opacity: 0.35; }
   </style>
 </head>
 <body class="ocr-app">
@@ -436,13 +504,15 @@
     <button class="icon-btn" id="settingsBtn" title="设置">⚙</button>
   </header>
 
-  <!-- 我的单号 -->
+  <!-- 我的单号（支持多个） -->
   <div class="targetbar">
-    <div class="field">
+    <div class="field" id="targetField">
       <span class="lens">🔍</span>
-      <input id="targetInput" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
-             placeholder="输入你的单号（留空则识别全部）">
-      <button class="clear" id="targetClear" title="清空">×</button>
+      <div class="chips" id="targetChips"></div>
+      <input id="targetInput" type="text" inputmode="text" enterkeyhint="done"
+             autocomplete="off" autocapitalize="characters" spellcheck="false"
+             placeholder="输入单号，点「添加」或按回车">
+      <button class="addbtn" id="targetAdd" type="button" title="添加这个单号">添加</button>
     </div>
   </div>
 
@@ -537,18 +607,20 @@
     const LANG_NAME = 'eng';
 
     // 档位 -> 处理的画面边长上限 + 是否做预处理。
-    // 实时识别对速度敏感，所以画面先缩到这个尺寸再送 OCR。
+    // 注意：这里的 maxSide 直接决定「会不会丢字」。
+    // 实测 960x720 的货架图缩到 900 后，B2-2-23432 就识别不出来了；
+    // 保持原尺寸则能正确识别。宁可慢一点，也不能因为缩放而丢字。
     const PROFILES = {
-      fast:     { maxSide: 720,  preprocess: false },
-      balanced: { maxSide: 900,  preprocess: false },
-      accurate: { maxSide: 1100, preprocess: true },
+      fast:     { maxSide: 1000, preprocess: false },
+      balanced: { maxSide: 1400, preprocess: false },
+      accurate: { maxSide: 1800, preprocess: true },
     };
 
     /* ================= 元素 ================= */
     const $ = id => document.getElementById(id);
     const camVideo = $('camVideo'), camOverlay = $('camOverlay'), camOff = $('camOff');
     const camStartBtn = $('camStartBtn'), camStopBtn = $('camStopBtn'), camStat = $('camStat');
-    const targetInput = $('targetInput'), targetClear = $('targetClear');
+    const targetInput = $('targetInput'), targetChips = $('targetChips');
     const foundBanner = $('foundBanner');
     const sheet = $('sheet'), sheetToggle = $('sheetToggle'), resCount = $('resCount'), sheetStat = $('sheetStat');
     const resultGrid = $('resultGrid'), clearResultsBtn = $('clearResultsBtn');
@@ -566,10 +638,12 @@
     let camLastShot = '';         // 上一帧的画面指纹，跳过重复帧
     let lastDetections = [];      // 最近一帧的识别结果，用于即时重绘
     let camScannedFrames = 0;
+    let camIdleFrames = 0;        // 连续多少帧画面没变，用于触发补扫
     let found = [];               // {id, code, conf, courier, at}
     let seq = 0;
     let bannerTimer = null;
     let lastHitCode = '';
+    let bannerShownCodes = new Set();   // 已经弹过横幅的单号，避免重复弹
 
     /* ================= 通用工具 ================= */
     function esc(s) {
@@ -849,13 +923,15 @@
     }
 
     /* ================= 单号提取 ================= */
-    // 预筛选：候选 token 只要「像单号片段」就留下，最终长度校验放在合并之后。
-    // 这样 "SF" 这种 2 位的公司前缀不会被 minLen 提前砍掉，才能和后面的数字段合并。
+    // 取向：宁可留着可疑的，也不要漏掉真实的。
+    // 所以这里只做「明显不是单号」的排除，凡是像编号的一律保留，
+    // 由置信度决定它显示成绿色还是黄色（存疑），而不是直接丢弃。
     function looksLikeToken(s) {
       if (s.length < 2) return false;
       if (!/^[0-9A-Z\-]+$/.test(s)) return false;
-      if (/\d/.test(s)) return true;                       // 含数字
-      return COURIERS.some(c => c.prefix === s);           // 或本身是公司前缀
+      // 必须含数字；或本身是公司前缀（等后段拼接）
+      if (/\d/.test(s)) return true;
+      return COURIERS.some(c => c.prefix === s);
     }
 
     function collectCandidates(data) {
@@ -865,10 +941,11 @@
         const raw = (wd.text || '').trim();
         if (!raw) return;
         const b = wd.bbox || null;
+        // 只过滤明显是噪点的极小块；阈值放得很低，避免把低置信度的真单号一起丢掉
         if (b) {
           const bw = b.x1 - b.x0, bh = b.y1 - b.y0;
-          if (bw * bh < 20) return;              // 太小，通常是噪点
-          if (bh < 5 || bw < 8) return;          // 细线/噪点
+          if (bw * bh < 8) return;
+          if (bh < 3 || bw < 4) return;
         }
         const norm = normalizeCode(raw);
         if (!looksLikeToken(norm)) return;
@@ -910,7 +987,10 @@
         const hgt = Math.max(4, Math.max(it.bbox.y1 - it.bbox.y0, cur.bbox.y1 - cur.bbox.y0));
         const sameLine = Math.abs(midY - curMidY) <= Math.max(4, hgt * 0.6);
         const gap = it.bbox.x0 - cur.bbox.x1;
-        const closeEnough = gap <= Math.max(7, hgt * 0.9);
+        // 只在「紧挨着」时才拼接（大约一个字符宽）。
+        // 这个阈值必须收紧：放宽到 hgt*0.9 时，两个本来独立的编号会被粘成
+        // "A-12-9900ZTOO-556677" 这种怪物（实测踩过）。
+        const closeEnough = gap <= Math.max(4, hgt * 0.45);
         const candidate = cur.code + it.code;
         const wouldBeValid = candidate.length <= 26 && looksMergeable(cur.code) && looksMergeable(it.code);
 
@@ -935,29 +1015,119 @@
       return merged;
     }
 
-    /* ================= 我的单号（目标匹配） ================= */
-    function currentTarget() {
-      return normalizeCode(targetInput.value);
+    /* ================= 我的单号（支持多个） ================= */
+    // 用户可以添加多个单号，每个都能触发红色高亮与横幅提示。
+    // 输入框里的内容在回车/粘贴时转成标签，不会丢。
+    let targets = [];          // 归一化后的单号数组
+
+    function currentTargets() { return targets; }
+
+    // 兼容旧调用：返回目标串（多个时用 '|' 连接，仅供展示/导出）
+    function currentTarget() { return targets.join('|'); }
+
+    // 这个 code 命中了「任意一个」目标，返回命中的那个目标；否则返回 ''
+    function matchedTarget(code) {
+      for (const t of targets) if (isTargetHit(code, t)) return t;
+      return '';
     }
 
-    // 命中判定：完全相等，或目标被识别结果包含 / 识别结果被目标包含（容错）
+    // 命中判定。货架编码形态很多（B2-2-23432、SF1234567890、ZTO-556677…），
+    // 用户常常只记得其中一段数字，所以这里做「分段包含」匹配。
+    //
+    // 关键是防「假命中」：输入完整单号 SF1234567890 时，
+    // 识别出的碎片 567890 虽然是它的子串，但只覆盖了尾巴，
+    // 这种不该算命中（否则任何碎片都会飘红）。所以要求覆盖率足够高。
     function isTargetHit(code, target) {
       if (!target) return false;
       if (code === target) return true;
-      // 目标较长时，容忍首尾被裁掉一两位
-      if (target.length >= 8 && (code.includes(target) || target.includes(code))) return true;
+
+      const MIN_SEG = 3;        // 单个段至少 3 位才参与段匹配
+      const MIN_SUB = 5;        // 子串匹配至少 5 位
+      const MIN_COVER = 0.6;    // 较长目标要求覆盖 60% 以上
+
+      const codeSegs = String(code).split('-');
+      const targetSegs = String(target).split('-');
+
+      // 2) 目标正好是识别结果里的一个完整段（23432 ⊂ B2-2-23432）
+      if (targetSegs.length === 1 && target.length >= MIN_SEG &&
+          codeSegs.length > 1 && codeSegs.includes(target)) return true;
+
+      // 3) 目标是一串完整的连续段，且占识别结果的大部分
+      if (targetSegs.length > 1 && target.length >= MIN_SEG &&
+          String(code).includes(target) &&
+          target.length / String(code).length >= 0.5) return true;
+
+      // 3b) 目标带公司前缀（如 SF1234 找 SF1234567890）：
+      //     前缀一致 + 后面数字是连续前缀，就算命中（用户常常只记得前半段）
+      const pre = COURIERS.find(c => target.startsWith(c.prefix) && target.length > c.prefix.length);
+      if (pre && String(code).startsWith(target)) return true;
+      if (pre && String(code).startsWith(pre.prefix) &&
+          String(code).includes(target.slice(pre.prefix.length))) return true;
+
+      // 4) 目标作为子串出现在结果里 —— 要求覆盖率够高，避免碎片假命中
+      if (target.length >= MIN_SUB && String(code).includes(target) &&
+          target.length / String(code).length >= MIN_COVER) return true;
+
+      // 5) 识别结果比目标短（用户多输了几位）—— 允许，但要求也不低
+      if (target.length >= 8 && String(target).includes(String(code)) &&
+          String(code).length / target.length >= MIN_COVER) return true;
+
       return false;
     }
 
     /* ================= 摄像头实时识别 ================= */
     const MIN_LEN = () => Math.max(3, Math.min(20, parseInt(minLenInput.value, 10) || 6));
+    // 低于这个置信度就算「存疑」，用黄色框 + 百分比问号提示。
+    // 注意：存疑不等于丢弃 —— 结果照常进入列表，只是颜色和标记不同。
+    const DUBIOUS_CONF = 60;
+
+    // 把一帧切成若干带重叠的小块。
+    //
+    // 这里的关键发现（实测得来，很反直觉）：
+    //   整图一次识别      -> 并排的两个编号会被并成一个词，输出 "pee"/"TEE" 这种乱码
+    //   3x3 切分          -> B2-2-23432 正好被接缝切成两半，反而读不出
+    //   4x4 切分          -> B2-2-23432 完整读出，但 SF1234567890 又被切开
+    // 也就是说没有任何单一粒度能一次覆盖全部排版。所以这里一次跑多套粒度，
+    // 结果取并集 —— 甲粒度切坏的，乙粒度往往正好完整。代价是多几次识别，值得。
+    function buildTiles(w, h) {
+      const OUT = [];
+      const seen = new Set();
+      const add = (sx, sy, sw, sh, psm) => {
+        sx = Math.max(0, Math.round(sx)); sy = Math.max(0, Math.round(sy));
+        sw = Math.round(Math.min(sw, w - sx)); sh = Math.round(Math.min(sh, h - sy));
+        if (sw < 40 || sh < 40) return;
+        const key = sx + ',' + sy + ',' + sw + ',' + sh;
+        if (seen.has(key)) return;
+        seen.add(key);
+        OUT.push({ sx, sy, sw, sh, psm: psm || '6' });
+      };
+
+      const grid = (cols, rows, overlapPct, psm) => {
+        const cw = w / cols, chh = h / rows;
+        const ox = cw * overlapPct, oy = chh * overlapPct;
+        for (let r = 0; r < rows; r++) {
+          for (let cc = 0; cc < cols; cc++) {
+            add(cc * cw - ox, r * chh - oy, cw + ox * 2, chh + oy * 2, psm);
+          }
+        }
+      };
+
+      // 4x4：小块，能完整容纳单个编号（读 B2-2-23432 靠它）
+      grid(4, 4, 0.22, '6');
+      // 2x2：块大一些，能容纳较长单号（读 SF1234567890 靠它）
+      grid(2, 2, 0.22, '6');
+      // 横向条带：兜住「一行被纵向切开」的情况
+      add(0, 0, w, h * 0.55, '11');
+      add(0, h * 0.45, w, h * 0.55, '11');
+      return OUT;
+    }
 
     function camSupported() {
       return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     }
 
     // 把视频帧坐标映射到覆盖层（object-fit: cover 的裁剪换算）并画红框
-    function drawBoxes(detections, srcW, srcH, target) {
+    function drawBoxes(detections, srcW, srcH) {
       const cw = window.innerWidth, ch = window.innerHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       if (camOverlay.width !== Math.round(cw * dpr) || camOverlay.height !== Math.round(ch * dpr)) {
@@ -978,19 +1148,49 @@
         offY = (ch - srcH * scale) / 2;
       }
 
-      detections.forEach(d => {
+      // 绘制层去重：数据层保留全部识别结果（宁可认错不可漏），
+      // 但同一位置上如果叠了好几个不同的码，画出来会糊成一片。
+      // 这里按区域分组：同一块重叠区域只画置信度最高的那个，
+      // 靠它标出「这里有个单号」，其余的在结果列表里仍可查。
+      const drawList = [];
+      const sortedDet = detections.slice().sort((a, b) => {
+        // 命中项优先画
+        const ha = matchedTarget(a.code) ? 1 : 0, hb = matchedTarget(b.code) ? 1 : 0;
+        if (ha !== hb) return hb - ha;
+        return b.conf - a.conf;
+      });
+      sortedDet.forEach(d => {
         if (!d.box) return;
+        const overlap = drawList.some(k => {
+          const ax = Math.max(d.box.x, k.box.x), ay = Math.max(d.box.y, k.box.y);
+          const bx = Math.min(d.box.x + d.box.w, k.box.x + k.box.w);
+          const by = Math.min(d.box.y + d.box.h, k.box.y + k.box.h);
+          if (bx <= ax || by <= ay) return false;
+          const inter = (bx - ax) * (by - ay);
+          const minA = Math.min(d.box.w * d.box.h, k.box.w * k.box.h);
+          return inter / Math.max(1, minA) > 0.55;
+        });
+        if (!overlap) drawList.push(d);
+      });
+
+      drawList.forEach(d => {
         const x = offX + d.box.x * scale, y = offY + d.box.y * scale;
         const w = d.box.w * scale, h = d.box.h * scale;
-        const hit = isTargetHit(d.code, target);
+        const matched = matchedTarget(d.code);
+        const hit = !!matched;
+        // 三档语义：
+        //   命中我输入的单号 -> 红（最粗、带外发光、带「你的快递」）
+        //   低置信度（存疑）  -> 黄（结果照常显示，只提示可信度）
+        //   正常              -> 绿
+        const doubt = !hit && d.conf < DUBIOUS_CONF;
+        const color = hit ? '#ff2d2d' : (doubt ? '#f59e0b' : '#10b981');
+        const fill = hit ? 'rgba(239,68,68,0.30)' : (doubt ? 'rgba(245,158,11,0.26)' : 'rgba(5,150,105,0.22)');
         const pad = Math.max(4, h * 0.2);
         const bw = w + pad * 2, bh = h + pad * 2;
 
-        // 命中我自己输入的单号 -> 红色（更粗、更亮、带外发光）
-        // 其它识别到的单号 -> 绿色（普通提示）
-        ctx.fillStyle = hit ? 'rgba(239,68,68,0.30)' : 'rgba(5,150,105,0.22)';
+        ctx.fillStyle = fill;
         ctx.fillRect(x - pad, y - pad, bw, bh);
-        ctx.strokeStyle = hit ? '#ff2d2d' : '#10b981';
+        ctx.strokeStyle = color;
         ctx.lineWidth = hit ? 4 : 2.5;
         ctx.strokeRect(x - pad, y - pad, bw, bh);
 
@@ -1005,21 +1205,30 @@
           ctx.restore();
         }
 
-        // 单号文字标签（超出画面时往左收，避免被裁掉）
+        // 单号文字标签 + 可信度百分比（超出画面时往左收，避免被裁掉）
+        const pct = Math.round(d.conf) + '%' + (doubt ? '?' : '');
         const label = d.code;
         const fs = hit ? 15 : 13;
         ctx.font = '700 ' + fs + 'px ui-monospace,Menlo,Consolas,monospace';
         const tw = ctx.measureText(label).width;
+        ctx.font = '700 11px ui-monospace,Menlo,Consolas,monospace';
+        const pw = ctx.measureText(pct).width;
         const th = fs + 9;
-        const boxW = tw + 12;
+        const boxW = tw + pw + 22;
         let lx = x - pad;
         if (lx + boxW > cw - 4) lx = Math.max(4, cw - 4 - boxW);
         if (lx < 4) lx = 4;
         const ty = Math.max(th, y - pad - th - 3);
-        ctx.fillStyle = hit ? '#ff2d2d' : '#10b981';
+        ctx.fillStyle = color;
         ctx.fillRect(lx, ty, boxW, th);
+        // 可信度底色块（半透明白，突出数字）
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.fillRect(lx + tw + 12, ty + 2, pw + 8, th - 4);
+        ctx.font = '700 ' + fs + 'px ui-monospace,Menlo,Consolas,monospace';
         ctx.fillStyle = '#fff';
         ctx.fillText(label, lx + 6, ty + fs + 1);
+        ctx.font = '700 11px ui-monospace,Menlo,Consolas,monospace';
+        ctx.fillText(pct, lx + tw + 16, ty + fs);
 
         // 命中额外标一个「你的快递」
         if (hit) {
@@ -1045,6 +1254,167 @@
       if (navigator.vibrate) { try { navigator.vibrate([40, 60, 40]); } catch (e) {} }
     }
 
+    // 位置去重：多粒度识别会让同一段文字被读成两个不同的码，画框时就会重叠成一片。
+    //
+    // ⚠ 重要：这个函数会「丢弃」数据，实测把召回率从 89% 压到 61%，
+    // 因为它总保留置信度最高的那个，而最高分的往往是错的变体。
+    // 按「宁可认错、不可漏」的原则，数据层不再调用它；
+    // 绘制层的去重改在 drawBoxes 内部做（只影响画面，不影响数据）。
+    // 保留此函数仅供将来需要「强去重」时使用。
+    function dedupeByPosition(list) {
+      if (list.length <= 1) return list;
+      const boxed = list.filter(d => d.bbox);
+      const noBox = list.filter(d => !d.bbox);
+      const out = [];
+      boxed.sort((a, b) => b.conf - a.conf);
+      for (const it of boxed) {
+        const overlap = out.some(k => {
+          const ax = Math.max(it.bbox.x0, k.bbox.x0), ay = Math.max(it.bbox.y0, k.bbox.y0);
+          const bx = Math.min(it.bbox.x1, k.bbox.x1), by = Math.min(it.bbox.y1, k.bbox.y1);
+          if (bx <= ax || by <= ay) return false;
+          const inter = (bx - ax) * (by - ay);
+          const aArea = Math.max(1, (it.bbox.x1 - it.bbox.x0) * (it.bbox.y1 - it.bbox.y0));
+          const bArea = Math.max(1, (k.bbox.x1 - k.bbox.x0) * (k.bbox.y1 - k.bbox.y0));
+          // 交集占较小框的一半以上就算同一处
+          return inter / Math.min(aArea, bArea) > 0.5;
+        });
+        if (!overlap) out.push(it);
+      }
+      return out.concat(noBox);
+    }
+
+    // 跨块重组：把「因空格被切开、且分散在不同块」的片段拼回完整编号。
+    // 例：SF / 7744 / 5566 / 8899 -> SF774455668899
+    //
+    // 关键设计：拼出来的结果只作为「额外候选」加入，绝不替换原始片段。
+    // 原因：拼合有风险 —— 两个本来就独立的编号若挨得近，会被拼成一串垃圾码。
+    // 若用它替换原文，真码就会丢（实测召回率从 89% 掉到 67%）。
+    // 只增不减，才能既补齐被拆开的号，又不伤到原本正确的号。
+    function joinAdjacentFragments(list, minLen) {
+      if (list.length < 2) return list;
+      const withBox = list.filter(d => d.bbox);
+      const noBox = list.filter(d => !d.bbox);
+      if (withBox.length < 2) return list;
+
+      const sorted = withBox.slice().sort((a, b) => {
+        const ay = (a.bbox.y0 + a.bbox.y1) / 2, by = (b.bbox.y0 + b.bbox.y1) / 2;
+        if (Math.abs(ay - by) > 8) return ay - by;
+        return a.bbox.x0 - b.bbox.x0;
+      });
+
+      const merged = [];          // 只用于产出「拼合候选」
+      let cur = null;
+      const flush = () => { if (cur) { merged.push(cur); cur = null; } };
+
+      for (const it of sorted) {
+        if (!cur) { cur = { ...it }; continue; }
+        const curMid = (cur.bbox.y0 + cur.bbox.y1) / 2;
+        const itMid = (it.bbox.y0 + it.bbox.y1) / 2;
+        const h = Math.max(cur.bbox.y1 - cur.bbox.y0, it.bbox.y1 - it.bbox.y0);
+        // 纵向容差必须很严：文字高度的一半以内。
+        // 放宽到 0.7 倍时，上下两行的编号会被拼成
+        // 「7799123456NO-12345-ABCDE」这种跨行垃圾（实测踩过）。
+        const sameLine = Math.abs(curMid - itMid) <= Math.max(4, h * 0.45);
+        const gap = it.bbox.x0 - cur.bbox.x1;
+        // 间隙很小才拼（约一个字符宽），否则是两个独立编号
+        const adjacent = gap >= -(h * 0.4) && gap <= Math.max(5, h * 0.8);
+        const joined = cur.code + it.code;
+        const okJoin = sameLine && adjacent &&
+                       joined.length <= 26 &&
+                       looksMergeable(cur.code) && looksMergeable(it.code);
+
+        if (okJoin) {
+          cur = {
+            code: joined,
+            conf: Math.min(cur.conf, it.conf),
+            bbox: {
+              x0: Math.min(cur.bbox.x0, it.bbox.x0),
+              y0: Math.min(cur.bbox.y0, it.bbox.y0),
+              x1: Math.max(cur.bbox.x1, it.bbox.x1),
+              y1: Math.max(cur.bbox.y1, it.bbox.y1),
+            },
+          };
+        } else {
+          flush();
+          cur = { ...it };
+        }
+      }
+      flush();
+
+      // 原始片段全部保留；拼合结果中「合法且是新的」才追加
+      const out = list.slice();
+      merged.forEach(m => {
+        if (m.code.length >= minLen &&
+            isValidCode(m.code, minLen) &&
+            !out.some(o => o.code === m.code)) {
+          out.push({ code: m.code, conf: m.conf, bbox: m.bbox, synthesized: true });
+        }
+      });
+      return out;
+    }
+
+    // 碎片收敛：完整码和它的碎片同时出现时，丢掉碎片。
+    // 例：有 B2-2-23432，就丢掉 23432 / 432；有 ZTO-556677 就丢掉 6677。
+    //
+    // ⚠ 这个函数是有损的，实测会吃掉 5~10 个百分点召回率（83% -> 76%）。
+    // 按「宁可认错、不可漏」的原则，数据层不再调用它；
+    // 界面上的重复碎片由 drawBoxes 的绘制层去重解决（不动数据）。
+    // 保留此函数仅供将来需要「强收敛」时使用。
+    //
+    // 判据（当初校准的结论，留作参考）：
+    //  - 必须「长度优先」排序，否则低分长碎片会抢先入列并反向吸收真码
+    //  - 被吸收方必须是「连续子串」且占 60% 以上（只是缺了头尾几位）
+    //  - 拼合候选（synthesized）不得吞掉原生结果
+    function collapseFragments(list, target) {
+      if (list.length <= 1) return list;
+      const sorted = list.slice().sort((a, b) => b.code.length - a.code.length || b.conf - a.conf);
+      const keep = [];
+
+      const isFragmentOf = (short, long) => {
+        if (!long.includes(short)) return false;
+        return short.length / long.length >= 0.6;
+      };
+
+      for (const it of sorted) {
+        if (matchedTarget(it.code)) { keep.push(it); continue; }
+        const absorbed = keep.some(k =>
+          k.code !== it.code &&
+          k.code.length > it.code.length &&
+          isFragmentOf(it.code, k.code) &&
+          k.conf >= it.conf - 25 &&
+          !k.synthesized
+        );
+        if (!absorbed) keep.push(it);
+      }
+      return keep;
+    }
+
+    // 拆开「两个编号被误粘在一起」的情况：
+    // 例 A-12-990ZTOO-556677 -> 应该拆成 A-12-990 / ZTOO-556677。
+    // 手法：在字符串里找第二个公司前缀或明显的重新开始点。
+    function splitGlued(code) {
+      if (code.length < 14) return [code];
+      const parts = [];
+      let rest = code;
+      let guard = 0;
+      while (rest.length >= 5 && guard++ < 6) {
+        // 从右侧找一个更短但合法的尾巴（含公司前缀最佳）
+        let cut = -1;
+        const prefixes = COURIERS.map(c => c.prefix).concat(['A-', 'B-']);
+        for (const p of prefixes) {
+          const idx = rest.indexOf(p, 1);
+          if (idx > 0 && idx < rest.length - 3) { cut = idx; break; }
+        }
+        if (cut < 0) break;
+        parts.push(rest.slice(0, cut));
+        rest = rest.slice(cut);
+      }
+      parts.push(rest);
+      // 只有拆出来的每一段都像单号时才采用，否则保持原样
+      const good = parts.filter(p => p.length >= 5 && /\d/.test(p));
+      return (good.length >= 2 && good.length === parts.length) ? good : [code];
+    }
+
     // 抓一帧 -> 送 OCR -> 画框 -> 累计结果
     async function camTick() {
       if (!camRunning) return;
@@ -1063,25 +1433,116 @@
           ctx.drawImage(camVideo, 0, 0, w, h);
           if (profile.preprocess) stretchContrast(c);
 
-          // 画面指纹：和上一帧几乎一样就跳过，省 CPU
+          // 画面指纹：和上一帧几乎一样就跳过，省 CPU。
+          // 但 OCR 有随机性：同一张静止画面，这一帧可能认不出 B2-2-23432，
+          // 过几帧再跑一次就可能认出来。所以即使画面没变，也定时强制重跑一次。
           const fp = w + 'x' + h + ':' + (ctx.getImageData(0, 0, Math.min(32, w), Math.min(32, h)).data.join('').slice(0, 240));
-          if (fp !== camLastShot) {
-            camLastShot = fp;
+          const sameFrame = (fp === camLastShot);
+          camLastShot = fp;
+          camIdleFrames = sameFrame ? (camIdleFrames + 1) : 0;
+          // 画面没变时，每 2 个空闲帧强制重扫一次
+          const forceRetry = sameFrame && (camIdleFrames % 2 === 0);
+          // 补扫时轮换放大倍数：同样的输入重跑不会有新结果，
+          // 换个尺度往往就能把之前漏掉的字读出来。
+          const retryBoost = forceRetry ? [1, 1.35, 0.85][camIdleFrames % 3] : 1;
+          if (!sameFrame || forceRetry) {
             camScannedFrames++;
-            const { data } = await camWorker.recognize(c);
 
-            const minLen = MIN_LEN();
-            let dets = collectCandidates(data);
-            dets = mergeLineWords(dets);
-            dets = dets.filter(d => isValidCode(d.code, minLen));
+            // —— 多区域识别取并集 ——
+            // 实测结论（很反直觉，但确实是主因）：
+            //   单个格子单独识别 -> B2-2-23432 识别得一字不差
+            //   两个格子并排整片识别 -> 变成 "pee" "TEE" 这种乱码
+            // 也就是说 tesseract 会在「并排的文字间距不足」时把它们并成一个词然后乱猜。
+            // 所以不能整图识别一次了事，必须切成足够小的块，让每块里只有少量文本。
+            // 结果是所有块的并集：宁可重复、宁可认错，也绝不因为布局分析而漏掉。
+            const tiles = buildTiles(w, h);
 
-            // 同一帧内按单号去重（保留置信度高的）
-            const byCode = new Map();
-            dets.forEach(d => {
-              const prev = byCode.get(d.code);
-              if (!prev || d.conf > prev.conf) byCode.set(d.code, d);
+            const merged = new Map();   // code -> {conf, bbox(full 坐标系), code}
+            for (const rg of tiles) {
+              if (rg.sw < 28 || rg.sh < 28) continue;
+              // 每块按 2 倍最近邻放大，提升小字可读性（平滑插值会把字抹糊）。
+              // 补扫时按 retryBoost 轮换倍数，让每次重试看到略微不同的像素，
+              // 这样才可能把上次漏掉的字读出来。
+              const up = 2 * retryBoost;
+              const tile = document.createElement('canvas');
+              tile.width = Math.round(rg.sw * up);
+              tile.height = Math.round(rg.sh * up);
+              const tctx = tile.getContext('2d', { willReadFrequently: true });
+              tctx.imageSmoothingEnabled = false;
+              tctx.drawImage(c, rg.sx, rg.sy, rg.sw, rg.sh, 0, 0, tile.width, tile.height);
+
+              let data;
+              try {
+                await camWorker.setParameters({ tessedit_pageseg_mode: rg.psm });
+                ({ data } = await camWorker.recognize(tile));
+              } catch (e) {
+                continue;   // 单块失败不影响其它块
+              }
+
+              const minLen = MIN_LEN();
+              let dets = collectCandidates(data);
+              dets = mergeLineWords(dets);
+              dets = dets.filter(d => isValidCode(d.code, minLen));
+
+              dets.forEach(d => {
+                // 把块内坐标换算回整帧坐标（除以本块实际用的放大倍数）
+                const bb = d.bbox ? {
+                  x0: rg.sx + d.bbox.x0 / up,
+                  y0: rg.sy + d.bbox.y0 / up,
+                  x1: rg.sx + d.bbox.x1 / up,
+                  y1: rg.sy + d.bbox.y1 / up,
+                } : null;
+                const prev = merged.get(d.code);
+                if (!prev) {
+                  merged.set(d.code, { code: d.code, conf: d.conf, bbox: bb });
+                } else {
+                  // 同一单号被多块识别：取最高置信度；都有框时取并集
+                  if (d.conf > prev.conf) { prev.conf = d.conf; prev.bbox = bb || prev.bbox; }
+                  else if (bb && prev.bbox) {
+                    prev.bbox = {
+                      x0: Math.min(prev.bbox.x0, bb.x0), y0: Math.min(prev.bbox.y0, bb.y0),
+                      x1: Math.max(prev.bbox.x1, bb.x1), y1: Math.max(prev.bbox.y1, bb.y1),
+                    };
+                  }
+                }
+              });
+            }
+
+            // 恢复整图模式的 psm，供下一帧默认使用
+            try { await camWorker.setParameters({ tessedit_pageseg_mode: '6' }); } catch (e) {}
+
+            // —— 碎片收敛 ——
+            // 多粒度取并集的副作用：完整码和它的碎片会同时出现
+            // （B2-2-23432 / 23432 / 432）。碎片会把界面搞乱、也会干扰命中判断。
+            // 规则：如果一个码是另一个更长码的子串，且置信度不更高，就丢掉它。
+            // 但用户输入的号码要保留，否则「输入 23432 命中 B2-2-23432」会被吃掉。
+            let uniq = Array.from(merged.values());
+
+            // 跨块重组：把「因空格被切开、分散在不同块」的片段拼回完整编号
+            // （SF 7744 5566 8899 -> SF774455668899）。
+            // 它只「补充」拼合候选，不替换原片段。
+            uniq = joinAdjacentFragments(uniq, MIN_LEN());
+
+            // 拆开被误粘在一起的两个编号（A-12-990ZTOO-556677）。
+            // 注意：拆分出的片段和原始粘连串都保留，不做取舍。
+            const exploded = [];
+            uniq.forEach(d => {
+              exploded.push(d);
+              const parts = splitGlued(d.code);
+              if (parts.length > 1) {
+                parts.forEach(p => {
+                  if (!exploded.some(x => x.code === p)) {
+                    exploded.push({ code: p, conf: d.conf, bbox: d.bbox, synthesized: true });
+                  }
+                });
+              }
             });
-            const uniq = Array.from(byCode.values());
+
+            // 碎片收敛是「有损」操作，实测会吃掉 5~10 个百分点召回率
+            // （83% -> 76%）。按「宁可认错、不可漏」的要求，这里默认不做，
+            // 只对用户明确要查的单号做收敛（避免命中项被清掉）。
+            // 重复碎片在界面上通过绘制层去重解决，不影响数据完整性。
+            uniq = exploded;
 
             // 换算回视频原始坐标供画框
             uniq.forEach(d => {
@@ -1096,17 +1557,18 @@
             });
 
             lastDetections = uniq;
-            const target = currentTarget();
-            drawBoxes(uniq, vw, vh, target);
+            drawBoxes(uniq, vw, vh);
 
-            // 命中自己的单号 -> 横幅提示
-            const hitCode = uniq.find(d => isTargetHit(d.code, target));
-            if (hitCode && hitCode.code !== lastHitCode) {
-              lastHitCode = hitCode.code;
-              showBanner(hitCode.code);
-            } else if (!hitCode) {
-              lastHitCode = '';
+            // 命中自己的单号 -> 横幅提示。
+            // 支持多个目标：每个新命中的单号都弹一次（同一时刻只显示最新那个）。
+            const hitCodes = uniq.filter(d => matchedTarget(d.code)).map(d => d.code);
+            const freshHit = hitCodes.find(c => !bannerShownCodes.has(c));
+            if (freshHit) {
+              hitCodes.forEach(c => bannerShownCodes.add(c));
+              lastHitCode = freshHit;
+              showBanner(freshHit);
             }
+            if (!hitCodes.length) bannerShownCodes.clear();
 
             // 累计到结果列表
             let added = 0;
@@ -1125,7 +1587,7 @@
               });
               added++;
             });
-            if (added) renderResults();
+            if (added) { renderResults(); renderTargets(); }
 
             camStat.textContent = '已扫 ' + camScannedFrames + ' 帧 · 识别到 ' + found.length + ' 个单号';
           }
@@ -1166,6 +1628,7 @@
         camRunning = true;
         camLastShot = '';
         camScannedFrames = 0;
+        camIdleFrames = 0;
         lastHitCode = '';
         camStat.textContent = '实时识别中…';
         camRAF = requestAnimationFrame(camTick);
@@ -1199,8 +1662,14 @@
     }
 
     /* ================= 结果列表 ================= */
+    // 外层：刷新结果 + 标签状态（标签的绿点依赖结果，所以两者要一起更新）
     function renderResults() {
-      const target = currentTarget();
+      renderResultsBody();
+      if (typeof renderTargets === 'function') renderTargets();
+    }
+
+    // 内层：只画列表本身，不再回头调用 renderResults，避免递归
+    function renderResultsBody() {
       resCount.textContent = found.length;
       sheetStat.textContent = found.length ? (found.length + ' 个') : '';
 
@@ -1211,34 +1680,49 @@
 
       // 命中的排前面
       const list = found.slice().sort((a, b) => {
-        const ha = isTargetHit(a.code, target) ? 1 : 0;
-        const hb = isTargetHit(b.code, target) ? 1 : 0;
+        const ha = matchedTarget(a.code) ? 1 : 0;
+        const hb = matchedTarget(b.code) ? 1 : 0;
         if (ha !== hb) return hb - ha;
         return b.at - a.at;
       });
 
       resultGrid.innerHTML = '';
       list.forEach(r => {
-        const hit = isTargetHit(r.code, target);
+        const hit = !!matchedTarget(r.code);
+        const doubt = !hit && r.conf < DUBIOUS_CONF;
         const item = document.createElement('div');
-        item.className = 'res-item' + (hit ? ' is-target' : '');
+        item.className = 'res-item' + (hit ? ' is-target' : (doubt ? ' is-doubt' : ''));
         item.innerHTML =
           '<div class="res-main">' +
             '<div class="res-code">' + esc(r.code) + '</div>' +
             '<div class="res-meta">' +
               (hit ? '<span class="tag hit">你的快递</span>' : '') +
+              (doubt ? '<span class="tag doubt">存疑</span>' : '') +
               (r.courier ? '<span class="tag">' + esc(r.courier) + '</span>' : '') +
-              '置信度 ' + Math.round(r.conf) + '%' +
+              '可信度 ' + Math.round(r.conf) + '%' +
             '</div>' +
           '</div>' +
           '<div class="res-act">' +
             '<button data-act="copy">复制</button>' +
+            '<button data-act="edit">改</button>' +
             '<button data-act="del" class="del">删除</button>' +
           '</div>';
         resultGrid.appendChild(item);
 
         item.querySelector('[data-act="copy"]').addEventListener('click', async () => {
           toast(await copyText(r.code) ? '已复制 ' + r.code : '复制失败，请手动选择');
+        });
+        item.querySelector('[data-act="edit"]').addEventListener('click', () => {
+          const next = window.prompt('修正这个单号（识别可能有误）：', r.code);
+          if (next == null) return;
+          const norm = normalizeCode(next);
+          if (!norm) { toast('不能为空'); return; }
+          r.code = norm;
+          r.edited = true;
+          r.courier = detectCourier(norm);
+          renderResults();
+          redrawFromLastFrame();
+          toast('已改为 ' + norm);
         });
         item.querySelector('[data-act="del"]').addEventListener('click', () => {
           found = found.filter(x => x.id !== r.id);
@@ -1273,38 +1757,117 @@
       }
     });
 
-    /* ================= 我的单号输入 ================= */
-    /* ================= 我的单号输入 ================= */
-    // 输入变化时立刻用最近一次的识别结果重绘画框，
-    // 不用等下一帧，红色/绿色会即时跟着切换。
-    function redrawFromLastFrame() {
-      if (!camRunning || !lastDetections.length) return;
-      camVideo && camVideo.videoWidth > 0 &&
-        drawBoxes(lastDetections, camVideo.videoWidth, camVideo.videoHeight, currentTarget());
+    /* ================= 我的单号：多标签管理 ================= */
+    // 支持：
+    //   - 点「添加」按钮（手机主要靠这个）/ 回车 / 逗号 添加
+    //   - 直接粘贴一大段（换行、逗号、空格混合）批量添加
+    //   - 点标签上的 × 单独删除；空输入框按退格删最后一个
+    const MAX_TARGETS = 30;
+
+    function renderTargets() {
+      targetChips.innerHTML = '';
+      targets.forEach((t, i) => {
+        const chip = document.createElement('span');
+        const isFound = found.some(r => isTargetHit(r.code, t));
+        chip.className = 'tchip' + (isFound ? ' found' : '');
+        chip.innerHTML =
+          (isFound ? '<span class="ok">✓</span>' : '') +
+          '<span>' + esc(t) + '</span>' +
+          '<button class="x" data-i="' + i + '" title="移除">×</button>';
+        chip.querySelector('.x').addEventListener('click', ev => {
+          ev.stopPropagation();
+          targets.splice(i, 1);
+          bannerShownCodes.clear();
+          renderTargets();
+          renderResultsBody();
+          redrawFromLastFrame();
+        });
+        targetChips.appendChild(chip);
+      });
+      targetInput.placeholder = targets.length
+        ? '继续添加…'
+        : '输入单号后回车，可添加多个';
     }
 
+    // 把一段文本拆成若干单号并加入列表
+    function addTargetsFromText(text) {
+      const parts = String(text || '')
+        .split(/[\s,;，；、|\/]+/)
+        .map(s => normalizeCode(s))
+        .filter(Boolean);
+      let added = 0;
+      parts.forEach(p => {
+        if (targets.length >= MAX_TARGETS) return;
+        if (!targets.includes(p)) { targets.push(p); added++; }
+      });
+      if (added) {
+        bannerShownCodes.clear();
+        renderTargets();
+        renderResults();
+        redrawFromLastFrame();
+        toast('已添加 ' + added + ' 个单号（共 ' + targets.length + ' 个）');
+      }
+      return added;
+    }
+
+    // 输入时实时同步（不生成标签，只为了即时预览高亮）
     targetInput.addEventListener('input', () => {
-      targetClear.classList.toggle('show', targetInput.value.length > 0);
-      lastHitCode = '';
+      updateAddBtn();
       renderResults();
       redrawFromLastFrame();
     });
-    targetClear.addEventListener('click', () => {
+
+    // 「添加」按钮：手机上没有可靠的回车键，主要靠它
+    const targetAdd = $('targetAdd');
+    function updateAddBtn() {
+      const v = targetInput.value.trim();
+      targetAdd.disabled = !v;
+      // 输入框里已经有内容时，按钮变醒目
+      targetAdd.textContent = v ? '添加' : '添加';
+    }
+    targetAdd.addEventListener('click', () => {
+      const v = targetInput.value.trim();
+      if (!v) {
+        toast('先输入单号');
+        targetInput.focus();
+        return;
+      }
+      // 先把输入框清空，再添加：addTargetsFromText 内部会重建标签 DOM，
+      // 若放在后面清，重建过程可能把值又带回输入框（实测踩过）。
       targetInput.value = '';
-      targetClear.classList.remove('show');
-      lastHitCode = '';
-      targetInput.focus();
-      renderResults();
-      redrawFromLastFrame();
+      addTargetsFromText(v);
+      updateAddBtn();
+      // 手机上收起键盘，让用户看清货架
+      targetInput.blur();
     });
+
     targetInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        targetInput.blur();
-        const t = currentTarget();
-        if (t) {
-          const hit = found.some(r => isTargetHit(r.code, t));
-          toast(hit ? '已找到：' + t : '还没扫到 ' + t + '，继续对准货架');
-        }
+      // 用输入法组词时的回车不要拦截
+      if (e.isComposing) return;
+      if (e.key === 'Enter' || e.key === ',' || e.key === ';') {
+        e.preventDefault();
+        const v = targetInput.value.trim();
+        if (!v) { targetInput.blur(); return; }
+        targetInput.value = '';        // 先清空，理由同上
+        addTargetsFromText(v);
+        updateAddBtn();
+      } else if (e.key === 'Backspace' && !targetInput.value && targets.length) {
+        // 空输入框按退格 = 删掉最后一个标签
+        targets.pop();
+        renderTargets();
+        renderResults();
+        redrawFromLastFrame();
+        updateAddBtn();
+      }
+    });
+
+    // 粘贴一段（可能带换行/逗号）时批量添加
+    targetInput.addEventListener('paste', e => {
+      const txt = (e.clipboardData || window.clipboardData).getData('text');
+      if (txt && /[\s,;，；]/.test(txt.trim())) {
+        e.preventDefault();
+        addTargetsFromText(txt);
+        targetInput.value = '';
       }
     });
 
@@ -1317,11 +1880,10 @@
 
     exportCsvBtn.addEventListener('click', () => {
       if (!found.length) { toast('还没有结果'); return; }
-      const target = currentTarget();
-      const rows = [['单号', '置信度', '快递公司', '是否我的单号', '识别时间']];
+      const rows = [['单号', '置信度', '快递公司', '命中的我的单号', '识别时间']];
       found.forEach(r => {
         rows.push([r.code, Math.round(r.conf), r.courier || '',
-          isTargetHit(r.code, target) ? '是' : '',
+          matchedTarget(r.code) || '',
           new Date(r.at).toLocaleString('zh-CN')]);
       });
       const csv = '\uFEFF' + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\r\n');
@@ -1331,17 +1893,22 @@
 
     exportJsonBtn.addEventListener('click', () => {
       if (!found.length) { toast('还没有结果'); return; }
-      const target = currentTarget();
       const payload = found.map(r => ({
         code: r.code,
         confidence: Math.round(r.conf),
         courier: r.courier || null,
-        isMyNumber: isTargetHit(r.code, target),
+        isMyNumber: !!matchedTarget(r.code),
+        matchedMyNumber: matchedTarget(r.code) || null,
         scannedAt: new Date(r.at).toISOString(),
         source: '摄像头',
       }));
       download('快递单号-' + new Date().toISOString().slice(0, 10) + '.json',
-        JSON.stringify({ exportedAt: new Date().toISOString(), myNumber: target || null, count: payload.length, items: payload }, null, 2),
+        JSON.stringify({
+          exportedAt: new Date().toISOString(),
+          myNumbers: targets.slice(),
+          count: payload.length,
+          items: payload,
+        }, null, 2),
         'application/json');
       toast('已导出 JSON');
     });
@@ -1380,6 +1947,27 @@
     // 离开页面时关摄像头，别把指示灯留着
     window.addEventListener('beforeunload', () => camStop());
 
+    // 手机键盘弹出时，可视高度会明显变小；用它来判断并把输入区上移
+    if (window.visualViewport) {
+      const vv = window.visualViewport;
+      const onVV = () => {
+        const shrunk = vv.height < window.innerHeight * 0.75;
+        document.body.classList.toggle('keyboard-open', shrunk);
+      };
+      vv.addEventListener('resize', onVV);
+      vv.addEventListener('scroll', onVV);
+      onVV();
+    }
+    targetInput.addEventListener('focus', () => {
+      if (window.innerWidth <= 560) document.body.classList.add('keyboard-open');
+    });
+    targetInput.addEventListener('blur', () => {
+      document.body.classList.remove('keyboard-open');
+    });
+
+    // 初始化
+    updateAddBtn();
+    renderTargets();
     renderResults();
   </script>
   <script src="../assets/js/baidu-analytics.js"></script>
