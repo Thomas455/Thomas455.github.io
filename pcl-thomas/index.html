@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCL Thomas455 修改版 · Thomas455</title>
+  <meta name="description" content="PCL Thomas455 修改版 —— 第三方基于 PCL（Plain Craft Launcher）修改的 Minecraft: Java Edition 启动器，恢复游戏下载、主题个性化、本地凭据与自建仓库更新。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .app-hero { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+    .app-hero img.avatar {
+      width: 88px; height: 88px; border-radius: 50%;
+      object-fit: cover; border: 3px solid var(--border); flex: none;
+    }
+    .app-hero h1 { margin: 0 0 6px; }
+    .app-hero .meta { color: var(--muted); font-size: 14px; }
+    .tagline { color: var(--muted); margin: 10px 0 0; }
+    .notice {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-weak);
+      padding: 14px 16px; border-radius: 8px;
+      margin: 22px 0; font-size: 14px; line-height: 1.7;
+    }
+    .notice strong { color: var(--accent); }
+    .feature-list { margin: 10px 0 0; padding-left: 20px; line-height: 1.9; }
+    .feature-list li { margin-bottom: 2px; }
+    code {
+      background: var(--bg-alt); border: 1px solid var(--border);
+      padding: 1px 5px; border-radius: 5px; font-size: 13px;
+    }
+    pre {
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+      font-size: 13px; line-height: 1.65;
+    }
+    pre code { background: none; border: 0; padding: 0; }
+    .table-wrap { overflow-x: auto; margin-top: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    th { background: var(--bg-alt); font-weight: 600; color: var(--muted); }
+    .ok { color: #1a7f37; font-weight: 600; }
+    .no { color: #b35900; font-weight: 600; }
+    .credit { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+    .credit .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent); flex: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../index.html">首页</a></li>
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="https://github.com/Thomas455/PCL-Thomas" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="app-hero">
+          <img class="avatar" src="avatar.jpg" alt="thomas455">
+          <div>
+            <h1>PCL <span class="accent">Thomas455</span> 修改版</h1>
+            <p class="meta">第三方基于 PCL 修改 · Minecraft: Java Edition 启动器</p>
+            <p class="tagline">让开源版 PCL 重新能用：恢复游戏下载、主题个性化、本地凭据与自建仓库自动更新。</p>
+          </div>
+        </div>
+        <div class="btn-group" style="margin-top:22px">
+          <a class="btn" href="https://github.com/Thomas455/PCL-Thomas" target="_blank" rel="noopener">查看源码</a>
+          <a class="btn btn-outline" href="https://github.com/Thomas455/PCL-Thomas/releases" target="_blank" rel="noopener">下载最新版</a>
+          <a class="btn btn-outline" href="https://github.com/Meloong-Git/PCL" target="_blank" rel="noopener">上游 PCL</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>这是什么</h2>
+        <p>PCL（Plain Craft Launcher）是一款 Minecraft: Java Edition 启动器。开源发布的这份源码在功能上做了一些限制，本页介绍的是我在自己机器上维护的一个修改分支：<strong>让它可以正常编译，并把几个被移除的功能恢复回来</strong>。</p>
+        <p>基于上游 <code>2.99.0.0</code> 版本源码（除换行符外与上游逐字节一致），所有改动都在 git 提交历史里，可逐条查看与回滚。</p>
+
+        <div class="notice">
+          <strong>第三方修改版声明：</strong>本程序是<b>第三方基于 PCL 独立进行二次创作的产物</b>，与 PCL 官方（龙腾猫跃 / 成都瓜皮龙科技有限公司）无关，不代表官方立场，也未经官方背书。
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="container">
+        <h2>做了哪些改动</h2>
+        <div class="grid">
+
+          <article class="card">
+            <h3>修复编译失败</h3>
+            <p>上游 <code>MeloongCore</code> 子模块在 zip 下载后是空目录，直接编译会报 <code>MSB3202</code> / <code>NU1104</code>。补全子模块后还发现必须用 Visual Studio 自带 MSBuild——用 <code>dotnet build</code> 会炸出 500+ 个 <code>BC30506</code>（旧式 VB.NET + WPF 工程不支持 SDK 版 MSBuild）。</p>
+            <div class="tags"><span class="badge">构建</span></div>
+          </article>
+
+          <article class="card">
+            <h3>恢复游戏下载</h3>
+            <p>上游用 <code>RestrictMcDownload = True</code> 下线了下载，但下载链路本身完整保留。改为 <code>False</code> 后恢复：原版 / Forge / Fabric / NeoForge / OptiFine / LiteLoader 安装、整合包安装、实例修改中的版本切换。下载源未改动，仍为 BMCLAPI 与 Mojang 双源。</p>
+            <div class="tags"><span class="badge">下载</span><span class="badge">安装</span></div>
+          </article>
+
+          <article class="card">
+            <h3>恢复主题个性化</h3>
+            <p>上游删除了「主题 ID → 配色」的映射表并用赞助校验锁死了大部分主题。本分支补回 15 个主题的 HSL 预设，解除解锁限制，并把自定义主题的色调 / 饱和度 / 亮度 / 渐变四个滑块重新接回渲染。</p>
+            <div class="tags"><span class="badge">个性化</span><span class="badge">主题</span></div>
+          </article>
+
+          <article class="card">
+            <h3>本地凭据文件</h3>
+            <p>新增 <code>PCL\Secret.ini</code> 存放自己的密钥（微软 Client ID / CurseForge Key / 更新仓库），只存本机、已在 <code>.gitignore</code> 中排除，仓库里只有模板。设置页新增「凭据与更新源」卡片可直接填写。</p>
+            <div class="tags"><span class="badge">凭据</span><span class="badge">隐私</span></div>
+          </article>
+
+          <article class="card">
+            <h3>CurseForge 优雅降级</h3>
+            <p>未配置 API Key 时，资源搜索自动只用 Modrinth 并提示一次，不再撞 403；配置后 CurseForge 搜索 / 下载 / 整合包全部可用。</p>
+            <div class="tags"><span class="badge">CurseForge</span><span class="badge">Modrinth</span></div>
+          </article>
+
+          <article class="card">
+            <h3>自建仓库更新</h3>
+            <p>上游更新走官方签名 CDN。本分支改为查询自己 GitHub 仓库的 Release：tag 当版本号比较，有 exe 附件就下载 → <code>--update</code> 协议等旧进程退出 → 覆盖 → 重启；无附件则跳转 Release 页面。</p>
+            <div class="tags"><span class="badge">更新</span><span class="badge">GitHub API</span></div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>已知限制</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>功能</th><th>状态</th><th>原因</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>游戏下载 / 安装</td><td class="ok">可用</td><td>已恢复 <code>RestrictMcDownload</code></td></tr>
+              <tr><td>主题个性化</td><td class="ok">可用</td><td>已补回配色映射并解除校验</td></tr>
+              <tr><td>离线登录 / 启动</td><td class="ok">可用</td><td>原生支持</td></tr>
+              <tr><td>CurseForge 资源</td><td class="ok">可用</td><td>需自备 API Key</td></tr>
+              <tr><td>正版（微软）登录</td><td class="no">受限</td><td>Mojang 对调用登录接口的 Client ID 有白名单，自建应用需申请</td></tr>
+              <tr><td>百宝箱</td><td class="no">不可用</td><td>上游已删除整个页面源码</td></tr>
+              <tr><td>联机（EasyTier）/ 公告</td><td class="no">不可用</td><td>依赖官方服务器下发的签名配置</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="container">
+        <h2>如何构建</h2>
+        <p>需要 Visual Studio（含 .NET 桌面开发 / VB 工作负载）与 .NET Framework 4.8 目标包。</p>
+<pre><code># 1. 克隆（记得带上子模块）
+git clone --recurse-submodules https://github.com/Thomas455/PCL-Thomas.git
+
+# 2. 还原 NuGet 包
+dotnet restore PCLCS/PCLCS.csproj
+
+# 3. 用 Visual Studio 的 MSBuild 编译（不要用 dotnet build）
+msbuild "Plain Craft Launcher 2\Plain Craft Launcher 2.vbproj" -p:Configuration=Release</code></pre>
+        <p>产物位于 <code>Plain Craft Launcher 2\bin\Plain Craft Launcher 2.exe</code>。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>署名与许可</h2>
+        <div class="credit"><span class="dot"></span><div><strong>PCL 原作者：龙腾猫跃</strong> · <a href="https://github.com/LTCat" target="_blank" rel="noopener">GitHub</a> · <a href="https://meloong.com/afd/a/LTCat" target="_blank" rel="noopener">赞助</a><br><span style="color:var(--muted);font-size:13px">本项目的全部基础工作都属于他</span></div></div>
+        <div class="credit"><span class="dot"></span><div><strong>修改者：thomas455</strong> · <a href="https://github.com/Thomas455" target="_blank" rel="noopener">GitHub</a><br><span style="color:var(--muted);font-size:13px">本修改版的维护者</span></div></div>
+        <p style="margin-top:18px">本项目沿用上游的《PCL 分发有限许可》与《PCL 存储库合理使用指南》，请在使用、修改、分发前阅读原文：<a href="https://github.com/Thomas455/PCL-Thomas/blob/main/LICENCE" target="_blank" rel="noopener">LICENCE</a>。</p>
+        <p style="color:var(--muted);font-size:13px">非 MINECRAFT 官方产品。未经 MOJANG 或 MICROSOFT 批准，也不与 MOJANG 或 MICROSOFT 关联。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a> · <a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
