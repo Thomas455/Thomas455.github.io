@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PCL Thomas455 修改版 · Thomas455</title>
-  <meta name="description" content="PCL Thomas455 修改版 —— 第三方基于 PCL（Plain Craft Launcher）修改的 Minecraft: Java Edition 启动器，恢复游戏下载、主题个性化、本地凭据与自建仓库更新。">
+  <meta name="description" content="PCL Thomas455 修改版 —— 第三方基于 PCL（Plain Craft Launcher）修改的 Minecraft: Java Edition 启动器，恢复游戏下载、主题个性化、编译期内置凭据与 GitHub/GitCode 多源更新。">
   <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
@@ -129,9 +129,9 @@
           </article>
 
           <article class="card">
-            <h3>自建仓库更新</h3>
-            <p>上游更新走官方签名 CDN。本分支改为查询自己 GitHub 仓库的 Release：tag 当版本号比较，有 exe 附件就下载 → <code>--update</code> 协议等旧进程退出 → 覆盖 → 重启；无附件则跳转 Release 页面。</p>
-            <div class="tags"><span class="badge">更新</span><span class="badge">GitHub API</span></div>
+            <h3>自建多源更新</h3>
+            <p>上游更新走官方签名 CDN。本分支改为查自己的仓库，并支持多源备份：<b>GitHub</b>（限额用尽时自动退回 <code>releases.atom</code> 网页方式）与 <b>GitCode</b>（国内可直连，限额约 400 次/分钟）。程序取所有源里版本号最高的那个，有 exe 附件就下载 → <code>--update</code> 替换 → 重启。</p>
+            <div class="tags"><span class="badge">更新</span><span class="badge">GitHub</span><span class="badge">GitCode</span></div>
           </article>
 
           <article class="card">
