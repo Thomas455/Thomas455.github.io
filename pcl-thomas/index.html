@@ -69,15 +69,41 @@
           <img class="avatar" src="avatar.jpg" alt="thomas455">
           <div>
             <h1>PCL <span class="accent">Thomas455</span> 修改版</h1>
-            <p class="meta">第三方基于 PCL 修改 · Minecraft: Java Edition 启动器 · 当前版本 2.99.1.0</p>
-            <p class="tagline">让开源版 PCL 重新能用：恢复游戏下载、主题个性化、本地凭据与自建仓库自动更新。</p>
+            <p class="meta">第三方基于 PCL 修改 · Minecraft: Java Edition 启动器 · 当前版本 <span id="metaVersion">2.99.1.0</span></p>
+            <p class="tagline">让开源版 PCL 重新能用：恢复游戏下载、主题个性化、内置凭据与 GitHub / GitCode 多源更新。</p>
           </div>
         </div>
         <div class="btn-group" style="margin-top:22px">
-          <a class="btn" href="https://github.com/Thomas455/PCL-Thomas" target="_blank" rel="noopener">查看源码</a>
-          <a class="btn btn-outline" href="https://github.com/Thomas455/PCL-Thomas/releases" target="_blank" rel="noopener">下载最新版</a>
+          <a class="btn" id="btnDownload" href="https://gitcode.com/Thomas455/PCL-Thomas/releases" target="_blank" rel="noopener">下载最新版</a>
+          <a class="btn btn-outline" href="https://github.com/Thomas455/PCL-Thomas/releases/latest" target="_blank" rel="noopener">GitHub 下载</a>
+          <a class="btn btn-outline" href="https://github.com/Thomas455/PCL-Thomas" target="_blank" rel="noopener">查看源码</a>
           <a class="btn btn-outline" href="https://github.com/Meloong-Git/PCL" target="_blank" rel="noopener">上游 PCL</a>
         </div>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="container">
+        <h2>下载</h2>
+        <p>最新版本：<strong id="latestVersion">2.99.1.0</strong> <span id="versionSource" style="color:var(--muted);font-size:13px"></span></p>
+        <div class="grid">
+
+          <article class="card">
+            <h3>GitCode <span class="badge">国内推荐</span></h3>
+            <p>国内可直连、不限速，下载通常比 GitHub 稳定。与 GitHub 发布的是同一个版本。</p>
+            <a class="card-link" id="linkGitCode" href="https://gitcode.com/Thomas455/PCL-Thomas/releases" target="_blank" rel="noopener">前往下载 →</a>
+          </article>
+
+          <article class="card">
+            <h3>GitHub</h3>
+            <p>主仓库，始终指向最新 Release。若访问不畅，请使用左侧 GitCode 源。</p>
+            <a class="card-link" href="https://github.com/Thomas455/PCL-Thomas/releases/latest" target="_blank" rel="noopener">前往下载 →</a>
+          </article>
+
+        </div>
+        <p style="color:var(--muted);font-size:13px;margin-top:14px">
+          两个源提供完全相同的 exe，SHA256 一致，任选其一即可。解压/运行前请确认下载的是 <code>Plain Craft Launcher 2.exe</code>。
+        </p>
       </div>
     </section>
 
@@ -201,6 +227,41 @@ msbuild "Plain Craft Launcher 2\Plain Craft Launcher 2.vbproj" -p:Configuration=
 
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
+
+    // 自动解析最新版本：先 GitCode，失败再 GitHub；都失败则保留静态兜底链接
+    (function () {
+      var REPO = 'Thomas455/PCL-Thomas';
+      var VERSION = '2.99.1.0';   // 静态兜底，取不到时显示
+      function setVersion(tag, from) {
+        if (!tag) return;
+        VERSION = tag;
+        document.getElementById('latestVersion').textContent = tag;
+        document.getElementById('versionSource').textContent = '（来源：' + from + '）';
+        var meta = document.getElementById('metaVersion');
+        if (meta) meta.textContent = tag;
+      }
+      function fromGitCode() {
+        return fetch('https://api.gitcode.com/api/v5/repos/' + REPO + '/releases', { credentials: 'omit' })
+          .then(function (r) { if (!r.ok) throw new Error('gitcode ' + r.status); return r.json(); })
+          .then(function (list) {
+            if (!list || !list.length) throw new Error('gitcode empty');
+            list.sort(function (a, b) { return (b.created_at || '').localeCompare(a.created_at || ''); });
+            var rel = list[0];
+            var exe = (rel.assets || []).filter(function (a) { return /\.exe$/i.test(a.name || ''); })[0];
+            if (exe && exe.browser_download_url) {
+              document.getElementById('linkGitCode').href = exe.browser_download_url;
+              document.getElementById('btnDownload').href = exe.browser_download_url;
+            }
+            setVersion(rel.tag_name, 'GitCode');
+          });
+      }
+      function fromGitHub() {
+        return fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
+          .then(function (r) { if (!r.ok) throw new Error('github ' + r.status); return r.json(); })
+          .then(function (rel) { setVersion(rel.tag_name, 'GitHub'); });
+      }
+      fromGitCode().catch(function () { return fromGitHub(); }).catch(function () { });
+    })();
   </script>
 </body>
 </html>
