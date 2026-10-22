@@ -117,9 +117,9 @@
           </article>
 
           <article class="card">
-            <h3>本地凭据文件</h3>
-            <p>新增 <code>PCL\Secret.ini</code> 存放自己的密钥（微软 Client ID / CurseForge Key / 更新仓库），只存本机、已在 <code>.gitignore</code> 中排除，仓库里只有模板。设置页新增「凭据与更新源」卡片可直接填写。</p>
-            <div class="tags"><span class="badge">凭据</span><span class="badge">隐私</span></div>
+            <h3>凭据编进程序</h3>
+            <p>微软 Client ID、CurseForge Key、更新仓库在<b>编译时注入</b>，装好即用、不用自己填。真值放在被 <code>.gitignore</code> 排除的 <code>ModSecretBuild.vb</code> 中，仓库只提交模板；该文件不存在时工程照常编译。官方版同样内嵌这些值，只是通过 GitHub Actions Secrets 注入。</p>
+            <div class="tags"><span class="badge">凭据</span><span class="badge">构建</span></div>
           </article>
 
           <article class="card">
@@ -156,7 +156,7 @@
               <tr><td>游戏下载 / 安装</td><td class="ok">可用</td><td>已恢复 <code>RestrictMcDownload</code></td></tr>
               <tr><td>主题个性化</td><td class="ok">可用</td><td>已补回配色映射并解除校验</td></tr>
               <tr><td>离线登录 / 启动</td><td class="ok">可用</td><td>原生支持</td></tr>
-              <tr><td>CurseForge 资源</td><td class="ok">可用</td><td>需自备 API Key</td></tr>
+              <tr><td>CurseForge 资源</td><td class="ok">可用</td><td>Key 已内置编译，开箱可用</td></tr>
               <tr><td>正版（微软）登录</td><td class="no">受限</td><td>Mojang 对调用登录接口的 Client ID 有白名单，自建应用需申请</td></tr>
               <tr><td>百宝箱</td><td class="no">已移除</td><td>本版移除了入口；上游源码里本来就只有一句占位提示</td></tr>
               <tr><td>联机（EasyTier）/ 公告</td><td class="no">不可用</td><td>依赖官方服务器下发的签名配置</td></tr>
