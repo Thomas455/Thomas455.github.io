@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CampusLink 校园网认证助手 · Thomas455</title>
+  <meta name="description" content="CampusLink —— 面向锐捷 SAM+ / eportal 门户的校园网认证客户端（WPF / .NET Framework 4.8）：自动探测、登录、保活、下线，MAC 无感注册、多账号网卡绑定、学校预设、协议诊断与 GitCode/GitHub 双源自动更新。">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .app-hero { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+    .app-hero img.avatar {
+      width: 88px; height: 88px; border-radius: 22px;
+      object-fit: cover; border: 3px solid rgba(255,255,255,.9);
+      box-shadow: 0 8px 24px rgba(31,35,40,.10); flex: none; background: #fff;
+    }
+    .app-hero h1 { margin: 0 0 6px; }
+    .app-hero .meta { color: var(--muted); font-size: 14px; }
+    .tagline { color: var(--muted); margin: 10px 0 0; max-width: 620px; font-size: 1rem; }
+    .notice {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-weak);
+      padding: 14px 16px; border-radius: 8px;
+      margin: 22px 0; font-size: 14px; line-height: 1.75;
+    }
+    .notice strong { color: var(--accent); }
+    .notice.warn { border-left-color: #b35900; background: #fff7ed; }
+    .notice.warn strong { color: #b35900; }
+    code {
+      background: var(--bg-alt); border: 1px solid var(--border);
+      padding: 1px 5px; border-radius: 5px; font-size: 13px;
+      word-break: break-word;
+    }
+    pre {
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+      font-size: 13px; line-height: 1.65;
+    }
+    pre code { background: none; border: 0; padding: 0; }
+    .table-wrap { overflow-x: auto; margin-top: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: var(--bg-alt); font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .ok { color: #1a7f37; font-weight: 600; white-space: nowrap; }
+    .no { color: #b35900; font-weight: 600; white-space: nowrap; }
+    .credit { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; }
+    .credit .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent); flex: none; margin-top: 8px;
+    }
+    .shots {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px; margin-top: 18px;
+    }
+    .shots figure {
+      background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.75);
+      border-radius: 10px; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(31,35,40,.06);
+    }
+    .shots img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--border); background: #fff; }
+    .shots figcaption { font-size: .85rem; color: var(--muted); padding: 9px 12px; }
+    .steps { padding-left: 22px; line-height: 1.95; }
+    .steps li { margin-bottom: 6px; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: -4px; }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="container nav">
+      <a class="brand" href="../index.html">Thomas455</a>
+      <ul class="nav-links">
+        <li><a href="../index.html">首页</a></li>
+        <li><a href="../tools.html">工具</a></li>
+        <li><a href="../nav.html">导航</a></li>
+        <li><a href="https://github.com/Thomas455/CampusLink" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="app-hero">
+          <img class="avatar" src="https://cdn.jsdelivr.net/gh/Thomas455/CampusLink@v1.3.0/CampusLink/Resources/app-icon-256.png" alt="CampusLink 图标" width="88" height="88" onerror="this.style.display='none'">
+          <div>
+            <h1>CampusLink <span class="accent">校园网认证助手</span></h1>
+            <p class="meta">WPF 桌面程序 · .NET Framework 4.8 · 面向锐捷 SAM+ / eportal 门户 · 当前版本 <span id="metaVersion">v1.3.0</span></p>
+            <p class="tagline">把浏览器里反复点来点去的校园网认证，变成桌面上一个常驻的小工具：开机自动登录、掉线自动重连、MAC 无感注册，顺便告诉你「现在在线的到底是谁」。</p>
+          </div>
+        </div>
+        <div class="btn-group" style="margin-top:22px">
+          <a class="btn" id="btnDownload" href="https://github.com/Thomas455/CampusLink/releases/latest" target="_blank" rel="noopener">下载最新版</a>
+          <a class="btn btn-outline" href="https://gitcode.com/Thomas455/CampusLink" target="_blank" rel="noopener">GitCode 仓库</a>
+          <a class="btn btn-outline" href="https://github.com/Thomas455/CampusLink" target="_blank" rel="noopener">查看源码</a>
+          <a class="btn btn-outline" href="https://github.com/Thomas455/CampusLink/blob/master/CampusLink/README.md" target="_blank" rel="noopener">使用文档</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="download">
+      <div class="container">
+        <h2>下载与安装</h2>
+        <p>最新版本：<strong id="latestVersion">v1.3.0</strong> <span id="versionSource" style="color:var(--muted);font-size:13px"></span></p>
+        <div class="grid">
+
+          <article class="card">
+            <h3>安装版 <span class="badge">首次安装</span></h3>
+            <p><code>CampusLink-Setup-&lt;版本&gt;.exe</code>：Inno Setup 安装程序，装到 <code>Program Files\CampusLink</code>，创建开始菜单/可选桌面快捷方式，自带卸载器。</p>
+            <a class="card-link" id="linkSetup" href="https://github.com/Thomas455/CampusLink/releases/latest" target="_blank" rel="noopener">前往 Release 下载 →</a>
+          </article>
+
+          <article class="card">
+            <h3>绿色包 <span class="badge">解压即用</span></h3>
+            <p><code>CampusLink-&lt;版本&gt;-win.zip</code>：整个程序目录（exe + 依赖 dll + config）。它同时是<b>自动更新</b>用的更新包，解压到任意目录也能直接运行。</p>
+            <a class="card-link" id="linkZip" href="https://github.com/Thomas455/CampusLink/releases/latest" target="_blank" rel="noopener">前往 Release 下载 →</a>
+          </article>
+
+          <article class="card">
+            <h3>GitCode 镜像 <span class="badge">国内可直连</span></h3>
+            <p>源码镜像，也是程序内置的两个更新源之一。目前发布仍以 GitHub Release 为主；GitCode 上如果同步了 Release 可以直接下载，没有就用上面的绿色包。</p>
+            <a class="card-link" href="https://gitcode.com/Thomas455/CampusLink/releases" target="_blank" rel="noopener">前往镜像 →</a>
+          </article>
+
+        </div>
+        <p style="color:var(--muted);font-size:13px;margin-top:14px">
+          系统要求：Windows 10（1903 或更高）/ Windows 11；.NET Framework 4.8 在这些版本上已内置，更旧的系统需要自行安装。程序清单要求<b>管理员权限</b>（涉及网卡状态），双击会弹 UAC 确认。自动更新只认 <code>-win.zip</code>，<code>Setup.exe</code> 会被忽略（避免把安装器当成主程序覆盖），所以老用户升级不用重装。
+        </p>
+      </div>
+    </section>
+
+    <section class="section" id="what">
+      <div class="container">
+        <h2>这是什么</h2>
+        <p>很多高校的校园网走的是<b>锐捷 SAM+ / eportal</b> 门户：没认证时访问任意网页会被 AC 拦下来 302 到门户页，填学号密码、点登录，之后才放行。麻烦的地方在于——每天开机都要来一遍，掉线了还得重来，多台设备/多个账号切来切去很容易搞混「现在到底是谁在线」。</p>
+        <p>CampusLink 把这条链路做成了一个本地 Windows 客户端：<b>探测拦截 → 抓 <code>queryString</code> → 登录 → 按 <code>keepaliveInterval</code> 保活 → 下线</b>，再补上多账号、网卡绑定、无感 MAC、学校预设、自动重连、分级通知、协议诊断和自动更新。界面用 <code>WPF-UI</code>，数据落在 <code>%APPDATA%\CampusLink</code>。</p>
+        <p>当前内置的学校预设是<b>广州大学·大学城校区</b>（门户 <code>222.201.54.55</code>，自助服务 <code>222.201.54.23:8080</code>，默认密码模板 <code>{uid}@Gzhu</code>）。别的学校可以自己建预设：门户地址不同，协议是同一套。</p>
+
+        <div class="notice warn">
+          <strong>使用前提：</strong>本工具只用于<b>你本人</b>或<b>已获授权管理</b>的账号，所有自动化请求都以本机、本账号发出。请遵守学校网络使用规定，不要用它批量尝试他人账号。程序与广州大学、锐捷网络均无隶属关系，不代表官方立场。
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="features">
+      <div class="container">
+        <h2>功能</h2>
+        <div class="grid">
+
+          <article class="card">
+            <h3>核心认证链路</h3>
+            <p>探测被 AC 拦截的 302，从 <code>Location</code> 里取 <code>index.jsp?</code> 之后的 <code>queryString</code>，然后登录、按 <code>keepaliveInterval</code> 定时保活、下线，全部走门户的 <code>InterFace.do?method=</code> 接口。</p>
+            <div class="tags"><span class="badge">认证</span><span class="badge">保活</span></div>
+          </article>
+
+          <article class="card">
+            <h3>认得出「现在是谁在线」</h3>
+            <p>MAC 已免认证时，从成功页 <code>success.jsp?userIndex=</code> 拿到 <code>userIndex</code>（它是 <code>会话_IP_学号</code> 的十六进制），再调 <code>getOnlineUserInfo</code> 查出真实账号。与本账号不一致时卡片黄标警告，不会让你以为「已登录」。</p>
+            <div class="tags"><span class="badge">在线识别</span><span class="badge">userIndex</span></div>
+          </article>
+
+          <article class="card">
+            <h3>账号信息结构化</h3>
+            <p>按 <code>userIndex</code> 拉取账号、网络（IP / MAC / 门户 / 是否本账号）、套餐与余额、门户通知、会话，分组展示；<code>ballInfo</code> 这种「JSON 数组的字符串」会二次解析并格式化（金额加 ¥、时间戳转本地时间、设备数加「台」），可复制、可看原始 JSON。</p>
+            <div class="tags"><span class="badge">账号信息</span><span class="badge">ballInfo</span></div>
+          </article>
+
+          <article class="card">
+            <h3>学校预设</h3>
+            <p>「学校相关」的配置抽成预设：学校名称、门户地址、自助服务地址、默认密码模板（<code>{uid}@Gzhu</code>）。内置「广州大学·大学城校区」，可新建 / 设为当前 / 删除 / 导入导出，一个预设一个 json，删了下次启动自动恢复内置项。</p>
+            <div class="tags"><span class="badge">预设</span><span class="badge">可分享</span></div>
+          </article>
+
+          <article class="card">
+            <h3>MAC 无感 + 多账号</h3>
+            <p>登录后调 <code>registerMac</code> 注册无感认证，<code>cancelMacWithUserNameAndMac</code> 解绑；MAC 直接取账号绑定的<b>网卡</b>，不用手填。多账号各自绑定一块网卡（决定认证 MAC 与源 IP）和独立门户地址，支持一键全部登录、强制下线全部会话。</p>
+            <div class="tags"><span class="badge">无感认证</span><span class="badge">多账号</span></div>
+          </article>
+
+          <article class="card">
+            <h3>常驻自动化</h3>
+            <p>启动自动登录、掉线探测自动重连、登录后自动注册 MAC。加上托盘图标与菜单、开机自启、关闭窗口最小化到托盘、单实例运行（第二次启动只唤醒已有窗口），以及按天滚动的日志。</p>
+            <div class="tags"><span class="badge">自动重连</span><span class="badge">托盘</span><span class="badge">开机自启</span></div>
+          </article>
+
+          <article class="card">
+            <h3>分级通知</h3>
+            <p>所有操作反馈统一走窗口右下角的通知：<b>绿</b>（成功）/ <b>黄</b>（注意）/ <b>红</b>（失败）/ <b>蓝</b>（信息），自动消失、可手动关闭。卡片上只留持久状态（在线 / 待认证 / 离线），不再被一闪而过的文字刷掉。</p>
+            <div class="tags"><span class="badge">通知</span><span class="badge">可读性</span></div>
+          </article>
+
+          <article class="card">
+            <h3>协议诊断</h3>
+            <p>逐个接口调用并打印<b>原始响应</b>：探测 <code>queryString</code>、<code>pageInfo</code>、登录页隐藏字段与 RSA 公钥、<code>getServices</code>、<code>getOnlineUserInfo</code>。登录报错、密码加密模式判断不准时，先来这里看门户到底返回了什么。</p>
+            <div class="tags"><span class="badge">排错</span><span class="badge">原始响应</span></div>
+          </article>
+
+          <article class="card">
+            <h3>双源自动更新</h3>
+            <p>先查 <b>GitCode</b> 再查 <b>GitHub</b>，逐源检查后取版本号最高者；同版本优先 GitCode，另一个源的同版本附件作为下载备选。启动检查默认开启（6 小时内最多一次），关于页可手动检查，带进度条下载，退出后整目录覆盖并重启，账号配置不动。</p>
+            <div class="tags"><span class="badge">更新</span><span class="badge">GitCode</span><span class="badge">GitHub</span></div>
+          </article>
+
+          <article class="card">
+            <h3>数据与隐私</h3>
+            <p>密码用 DPAPI（<code>ProtectedData.Protect</code>，<code>CurrentUser</code>）加密存储，换机器 / 换用户都解不开。日志写入前对 <code>password</code> 等字段脱敏，<b>账号只写显示名称或学号后 3 位</b>，<code>userIndex</code> 只保留前 8 位；启动时还会清洗历史日志。</p>
+            <div class="tags"><span class="badge">DPAPI</span><span class="badge">日志脱敏</span></div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="protocol">
+      <div class="container">
+        <h2>协议实现要点</h2>
+        <p>统一入口：<code>POST http://&lt;门户&gt;/eportal/InterFace.do?method=</code>，表单提交。编码方式按接口区分——这一步最容易踩坑，所以每条都写清楚。</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>接口</th><th>方法</th><th>编码 / 说明</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>探测</td><td><code>GET http://&lt;门户&gt;/</code></td><td>读取原始 302 的 <code>Location</code>，取 <code>index.jsp?</code> 之后的查询串；返回 <code>redirectortosuccess.jsp</code> 即判为在线。原始串不伪造</td></tr>
+              <tr><td>登录</td><td><code>login</code></td><td><code>userId</code> / <code>password</code> / <code>service</code> / <code>queryString</code> / <code>validcode</code> 走<b>双重 <code>encodeURIComponent</code></b>；成功后保存 <code>userIndex</code> 与 <code>keepaliveInterval</code></td></tr>
+              <tr><td>保活</td><td><code>keepalive</code></td><td><code>userIndex</code> 单次编码，按 <code>keepaliveInterval</code> 周期调用（默认 120s）</td></tr>
+              <tr><td>下线</td><td><code>logout</code> / <code>logoutByUserIdAndPass</code></td><td>单次编码；后者用于「强制下线全部」</td></tr>
+              <tr><td>无感</td><td><code>registerMac</code> / <code>cancelMacWithUserNameAndMac</code></td><td>MAC 归一化为 12 位大写十六进制</td></tr>
+              <tr><td>只读</td><td><code>pageInfo</code> / <code>getServices</code> / <code>getOnlineUserInfo</code></td><td>用 <code>queryString</code> / <code>userIndex</code> 取信息</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-top:28px;font-size:1.05rem">响应解析</h3>
+        <p>优先 <code>JObject.Parse</code>；失败时截取 <code>{...}</code> 重试；再失败用正则抠 <code>"result":"..."</code>。文本解码优先严格 UTF-8，失败回退 <code>GB18030</code>——门户页面本身是 GBK。</p>
+
+        <h3 style="margin-top:28px;font-size:1.05rem">密码加密（<code>passwordEncrypt</code>）</h3>
+        <p>自动模式会先读 <code>index.jsp</code> 的隐藏字段 <code>passwordEncrypt</code>、<code>publicKeyExponent</code>、<code>publicKeyModulus</code>，再决定明文还是 RSA；现场判断不准时可以手动切「强制明文 / 强制 RSA」。RSA 分支是照着门户前端 <code>RSAUtils.encryptedString</code> 复刻的：</p>
+<pre><code>密码 + 分隔符（&gt; 或 &gt;&gt;）+ MAC
+  → 整串反转
+  → 按 16 位 digit 小端分块
+  → 无填充 ModPow
+  → 定长十六进制串提交</code></pre>
+        <p class="sub">资料里 <code>&gt;</code> 和 <code>&gt;&gt;</code> 两种分隔符都出现过，默认 <code>&gt;</code>，设置里可改。</p>
+
+        <h3 style="margin-top:28px;font-size:1.05rem">登录状态语义</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>卡片状态</th><th>含义</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>在线</code></td><td>真的走通了 <code>login</code>，拿到 <code>userIndex</code>，账号密码已通过门户校验</td></tr>
+              <tr><td><code>在线·免认证</code></td><td>门户返回 <code>redirectortosuccess.jsp</code>，这块 MAC 已被 AC 放行。<b>没有校验密码</b>，但会识别当前在线的真实账号并标注「本账号 / 非本账号」</td></tr>
+              <tr><td><code>待认证</code></td><td>拿到了 <code>queryString</code>，还没登录</td></tr>
+              <tr><td><code>离线</code> / <code>异常</code></td><td>已下线 / 探测失败或接口报错</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="ui">
+      <div class="container">
+        <h2>界面</h2>
+        <p>五个页面：账号、账号信息、协议诊断、运行日志、设置（外加关于页与更新对话框）。</p>
+        <div class="shots">
+          <figure>
+            <img src="https://cdn.jsdelivr.net/gh/Thomas455/CampusLink@v1.3.0/docs/screenshots/accounts.png" alt="账号页：账号卡片与登录状态" loading="lazy" decoding="async">
+            <figcaption>账号：卡片式列表，登录 / 下线 / 探测 / 编辑 / 无感注册 / 强制下线</figcaption>
+          </figure>
+          <figure>
+            <img src="https://cdn.jsdelivr.net/gh/Thomas455/CampusLink@v1.3.0/docs/screenshots/info.png" alt="账号信息页：账号、网络、套餐与余额分组" loading="lazy" decoding="async">
+            <figcaption>账号信息：账号 / 网络 / 套餐与余额 / 门户通知 / 会话</figcaption>
+          </figure>
+          <figure>
+            <img src="https://cdn.jsdelivr.net/gh/Thomas455/CampusLink@v1.3.0/docs/screenshots/settings.png" alt="设置页：学校预设、自动重连、更新设置" loading="lazy" decoding="async">
+            <figcaption>设置：学校预设管理、密码加密模式、自动重连、托盘与更新</figcaption>
+          </figure>
+          <figure>
+            <img src="https://cdn.jsdelivr.net/gh/Thomas455/CampusLink@v1.3.0/docs/screenshots/diagnostics.png" alt="协议诊断页：逐接口原始响应" loading="lazy" decoding="async">
+            <figcaption>协议诊断：逐接口调用并打印原始响应</figcaption>
+          </figure>
+          <figure>
+            <img src="https://cdn.jsdelivr.net/gh/Thomas455/CampusLink@v1.3.0/docs/screenshots/logs.png" alt="运行日志页" loading="lazy" decoding="async">
+            <figcaption>运行日志：实时日志、清空、打开日志目录（账号已脱敏）</figcaption>
+          </figure>
+          <figure>
+            <img src="https://cdn.jsdelivr.net/gh/Thomas455/CampusLink@v1.3.0/docs/screenshots/update-dialog.png" alt="自动更新对话框与进度" loading="lazy" decoding="async">
+            <figcaption>自动更新：双源检查、发布说明、带进度条下载</figcaption>
+          </figure>
+        </div>
+        <p style="color:var(--muted);font-size:13px;margin-top:12px">截图来自仓库 <code>docs/screenshots/</code>，通过 jsDelivr 直链（固定到 <code>v1.3.0</code>）。</p>
+      </div>
+    </section>
+
+    <section class="section" id="quickstart">
+      <div class="container">
+        <h2>快速上手</h2>
+        <ol class="steps">
+          <li>电脑连上校园网，<b>先不要用浏览器登录</b>。</li>
+          <li>「设置 → 学校预设」确认当前启用的是「广州大学·大学城校区」（首次启动会自动启用；别的学校先新建自己的预设）。</li>
+          <li>「账号」页 → <b>添加账号</b>：填学号、密码，选一块正在联网的网卡；门户地址会按当前预设自动带出。</li>
+          <li>保存后点卡片上的 <b>登录</b>；成功后可再点 <b>无感注册</b>，让该网卡的 MAC 之后长期直通。</li>
+          <li>要改账号：点卡片上的 <b>编辑</b>；删除账号在编辑面板里点「删除账号」（二次确认）。</li>
+          <li>看当前网络的详细信息：「账号信息」页 → <b>刷新信息</b>。</li>
+          <li>常驻使用：设置里打开 <b>开机自动启动</b>、<b>关闭窗口时最小化到托盘</b>、<b>掉线自动重连</b>。</li>
+        </ol>
+        <div class="notice">
+          <strong>一个容易误解的地方：</strong>如果门户已经显示「已在线」，说明这个 MAC 已在免认证状态，<b>此时点「登录」不会校验密码</b>，卡片显示 <code>在线·免认证</code>。想验证密码对不对，得先解绑 MAC 让 AC 重新拦截。
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="limits">
+      <div class="container">
+        <h2>已知限制</h2>
+        <div class="notice warn" style="margin-top:0">
+          <strong>关于验证范围：</strong>协议层由自带 mock 门户的 65 项自动化测试覆盖（编码、MAC、DPAPI、RSA、探测、登录、保活、无感、下线、账号信息、预设、脱敏、整包更新）。但<b>真实账号密码登录没有做端到端验证</b>——测试时那台机器已处于免认证状态，门户不会下发 <code>queryString</code>，走不到登录接口。
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>项目</th><th>状态</th><th>说明</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>真实 <code>passwordEncrypt</code> 取值</td><td class="no">未确认</td><td>资料未拿到现场登录页隐藏字段；已提供自动 / 强制明文 / 强制 RSA 三种模式和 <code>&gt;</code>、<code>&gt;&gt;</code> 两种分隔符，可在诊断页核对</td></tr>
+              <tr><td>服务列表</td><td class="no">空</td><td>现场 <code>getServices</code> 返回空数组，<code>service</code> 参数默认留空；报「请选择服务」时从诊断页取服务名填进账号设置</td></tr>
+              <tr><td>自助服务</td><td class="no">已移除</td><td>验证码需人工识别，收益低；改为「账号信息 → 自助服务」在浏览器里操作</td></tr>
+              <tr><td>同一网卡多账号</td><td class="no">互相顶掉</td><td>真实多账号聚合需要每个账号绑定不同网卡</td></tr>
+              <tr><td>托盘图标</td><td class="no">Win11 默认折叠</td><td>依赖 WinForms <code>NotifyIcon</code>；设置页有「打开任务栏设置」直达按钮</td></tr>
+              <tr><td>密码校验</td><td class="no">受限</td><td>MAC 已注册无感时门户不下发 <code>queryString</code>，登录接口走不到，程序无法校验密码</td></tr>
+              <tr><td>管理员权限</td><td class="no">必需</td><td>清单 <code>requireAdministrator</code>，用于修改网卡相关状态；单实例互斥只在同一会话内生效</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="build">
+      <div class="container">
+        <h2>构建、打包与测试</h2>
+        <p>需要 Windows 10/11 + .NET Framework 4.8 目标包，以及 Visual Studio 2026（18.x）或 MSBuild；NuGet 会还原 <code>WPF-UI 4.3.0</code> 与 <code>Newtonsoft.Json 13.0.3</code>。</p>
+<pre><code># 在 CampusLink.csproj 所在目录
+msbuild CampusLink.csproj -t:Restore,Build -p:Configuration=Release
+# 产物：bin\Release\CampusLink.exe</code></pre>
+<pre><code># 一条命令生成安装程序 + 更新包（在仓库根目录）
+powershell -ExecutionPolicy Bypass -File tools\package.ps1
+# dist\CampusLink-Setup-&lt;版本&gt;.exe
+# dist\CampusLink-&lt;版本&gt;-win.zip</code></pre>
+        <p class="sub">编译安装程序需要 Inno Setup 6；没装时脚本只出 zip。</p>
+        <p style="margin-top:18px">协议层测试（自带 mock 门户，不需要真机联网）：</p>
+<pre><code>cd CampusLink
+msbuild CampusLink.csproj -t:Restore,Build -p:Configuration=Debug
+cd ..\tests\CoreTests
+msbuild CoreTests.csproj -t:Restore,Build
+.\bin\Debug\CoreTests.exe
+# 通过 65 项，失败 0 项</code></pre>
+        <p style="margin-top:14px">发布：推 <code>v*</code> tag 触发 GitHub Actions（构建 → 生成 zip → 编译 Setup → 创建 Release 并上传两个附件）；<code>workflow_dispatch</code> 只构建、不发布。构建前会按 tag 改写 <code>AssemblyInfo</code> 的版本，保证「关于页显示的版本」和 tag 一致，自动更新不会反复提示同一个版本。</p>
+      </div>
+    </section>
+
+    <section class="section section-alt" id="about">
+      <div class="container">
+        <h2>署名与免责</h2>
+        <div class="credit"><span class="dot"></span><div><strong>作者：thomas455</strong> · <a href="https://github.com/Thomas455" target="_blank" rel="noopener">GitHub</a> · <a href="https://gitcode.com/thomas455" target="_blank" rel="noopener">GitCode</a> · <a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a><br><span style="color:var(--muted);font-size:13px">协议实现、界面与文档维护</span></div></div>
+        <div class="credit"><span class="dot"></span><div><strong>技术栈</strong>：WPF + .NET Framework 4.8 · <a href="https://github.com/lepoco/wpfui" target="_blank" rel="noopener">WPF-UI</a>（MIT）· <a href="https://github.com/JamesNK/Newtonsoft.Json" target="_blank" rel="noopener">Newtonsoft.Json</a>（MIT）· Inno Setup<br><span style="color:var(--muted);font-size:13px">锐捷 SAM+ / eportal 协议为现场抓包与公开资料整理，非官方 SDK</span></div></div>
+        <p style="margin-top:18px">源码：<a href="https://github.com/Thomas455/CampusLink" target="_blank" rel="noopener">GitHub</a> / <a href="https://gitcode.com/thomas455/CampusLink" target="_blank" rel="noopener">GitCode</a>。仓库目前未附带许可证文件，使用与分发前请先阅读仓库中的 README 与免责声明。</p>
+        <p style="color:var(--muted);font-size:13px;margin-top:8px">免责声明：本工具仅用于你本人或已获授权管理的账号，自动化请求均以本机、本账号发出。请遵守所在学校的网络使用规定；因使用本工具造成的账号异常或网络问题，由使用者自行承担。本项目与广州大学、锐捷网络无隶属关系，未经其背书。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Thomas455 · <a href="https://github.com/thomas455" target="_blank" rel="noopener">GitHub</a> · <a href="https://space.bilibili.com/646916080" target="_blank" rel="noopener">B站</a></p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // 自动解析最新版本与附件：同时查询 GitCode 与 GitHub，取版本最高者（同版本优先 GitCode）；都失败则保留静态兜底
+    (function () {
+      var REPO = 'Thomas455/CampusLink';
+      var best = null;
+
+      function parseVer(tag) {
+        var m = /(\d+)\.(\d+)\.(\d+)/.exec(tag || '');
+        return m ? [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)] : null;
+      }
+      function cmp(a, b) {
+        for (var i = 0; i < 3; i++) { if (a[i] !== b[i]) { return a[i] - b[i]; } }
+        return 0;
+      }
+      function pickAsset(assets, re) {
+        for (var i = 0; i < (assets || []).length; i++) {
+          var a = assets[i];
+          if (a && a.browser_download_url && re.test(a.name || '')) { return a.browser_download_url; }
+        }
+        return null;
+      }
+      function consider(rel, source) {
+        if (!rel) { return; }
+        var ver = parseVer(rel.tag_name);
+        if (!ver) { return; }
+        var cand = {
+          tag: rel.tag_name,
+          ver: ver,
+          source: source,
+          setup: pickAsset(rel.assets, /setup.*\.exe$/i),
+          zip: pickAsset(rel.assets, /-win\.zip$/i),
+          page: rel.html_url || null
+        };
+        if (!best || cmp(cand.ver, best.ver) > 0) {
+          best = cand;
+        } else if (cmp(cand.ver, best.ver) === 0) {
+          // 同版本优先 GitCode：以 GitCode 为主源，缺的附件再用另一源补
+          var preferred = cand.source === 'GitCode' ? cand : best;
+          var secondary = cand.source === 'GitCode' ? best : cand;
+          preferred.setup = preferred.setup || secondary.setup;
+          preferred.zip = preferred.zip || secondary.zip;
+          preferred.page = preferred.page || secondary.page;
+          best = preferred;
+        }
+      }
+      function apply() {
+        if (!best) { return; }
+        var page = best.page || ('https://github.com/' + REPO + '/releases/latest');
+        document.getElementById('latestVersion').textContent = best.tag;
+        document.getElementById('versionSource').textContent = '（来源：' + best.source + '）';
+        var meta = document.getElementById('metaVersion');
+        if (meta) { meta.textContent = best.tag; }
+        var btn = document.getElementById('btnDownload');
+        if (btn) { btn.href = best.setup || page; }
+        var linkSetup = document.getElementById('linkSetup');
+        if (linkSetup) { linkSetup.href = best.setup || page; }
+        var linkZip = document.getElementById('linkZip');
+        if (linkZip) { linkZip.href = best.zip || page; }
+      }
+      function fromGitCode() {
+        return fetch('https://api.gitcode.com/api/v5/repos/' + REPO + '/releases', { credentials: 'omit' })
+          .then(function (r) { if (!r.ok) { throw new Error('gitcode ' + r.status); } return r.json(); })
+          .then(function (list) {
+            if (!list || !list.length) { throw new Error('gitcode empty'); }
+            list.sort(function (a, b) { return (a.created_at || '').localeCompare(b.created_at || ''); });
+            list.forEach(function (rel) { consider(rel, 'GitCode'); });
+          });
+      }
+      function fromGitHub() {
+        return fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
+          .then(function (r) { if (!r.ok) { throw new Error('github ' + r.status); } return r.json(); })
+          .then(function (rel) { consider(rel, 'GitHub'); });
+      }
+
+      Promise.all([
+        fromGitCode().catch(function () { }),
+        fromGitHub().catch(function () { })
+      ]).then(apply).catch(function () { });
+    })();
+  </script>
+</body>
+</html>
